@@ -1,0 +1,46 @@
+.LoginPage{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color:cadetblue;
+}
+.project_title{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  border-radius: 5%;
+  padding: 2%;
+  margin: 2%;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  background-color: antiquewhite;
+  border-radius: 5%;
+  padding: 5%;
+}
+
+input, button {
+  padding: 10px;
+  width: 220px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
