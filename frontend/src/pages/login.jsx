@@ -1,9 +1,10 @@
 import './login.css';
  
-function ButtonComponent({ btn_title }) {
+function ButtonComponent({btn_title, routing_page}) {
     return (
-        <button type="button" title={btn_title}>{btn_title}</button>
+        <a href={routing_page}><button type="button" title={btn_title}>{btn_title}</button></a>
     );
+
 }
 
 function TextInput({ title, placeholder, type }) {
@@ -24,7 +25,7 @@ function Loginpage() {
                 <br />
                 <TextInput title="Password" placeholder="Password" type="password" />
                 <br />
-                <ButtonComponent btn_title="Login" />
+                <ButtonComponent btn_title="Login" routing_page="./admin" />
             </div>
         </div>
 
