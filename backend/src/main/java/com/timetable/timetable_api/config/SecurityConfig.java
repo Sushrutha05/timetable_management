@@ -2,9 +2,12 @@ package com.timetable.timetable_api.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // <-- ADD THIS
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // <-- ADD THIS
+import org.springframework.security.crypto.password.PasswordEncoder; // <-- ADD THIS
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -23,12 +26,25 @@ public class SecurityConfig {
 
                 // Authorize Requests
                 .authorizeHttpRequests(auth -> auth
-                        // Explicitly allow all requests to our API endpoints
-                        .requestMatchers("/api/**").permitAll()
-                        // Any other request requires authentication (good practice to keep)
+                        // --- UPDATE THIS SECTION ---
+                        // Explicitly allow all POST requests to our API endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/**").permitAll()
+                        // Explicitly allow all GET requests to our API endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                        // Explicitly allow all DELETE requests
+                        .requestMatchers(HttpMethod.DELETE, "/api/**").permitAll()
+                        // Any other request requires authentication
                         .anyRequest().authenticated()
                 );
 
         return http.build();
+    }
+
+    // --- ADD THIS BEAN ---
+    // Adding a PasswordEncoder bean is best practice and helps Spring Security
+    // configure itself correctly, even if we aren't using it for login yet.
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
