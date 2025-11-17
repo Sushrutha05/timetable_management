@@ -8,8 +8,10 @@ com/timetable/timetable_api/repository/RoomRepository.class
 com/timetable/timetable_api/service/FacultyPreferenceService.class
 com/timetable/timetable_api/controller/RoomManagementController.class
 com/timetable/timetable_api/model/DepartmentCourseId.class
+com/timetable/timetable_api/model/TimeSlot.class
 com/timetable/timetable_api/model/Course.class
 com/timetable/timetable_api/service/TimetableViewService.class
+com/timetable/timetable_api/service/TimeSlotService.class
 com/timetable/timetable_api/controller/TimetableGenerationController.class
 com/timetable/timetable_api/service/CourseOfferingService.class
 com/timetable/timetable_api/model/FacultyPreference.class
@@ -34,8 +36,10 @@ com/timetable/timetable_api/repository/FacultyRepository.class
 com/timetable/timetable_api/dto/FacultyPreferenceRequest$PreferenceItem.class
 com/timetable/timetable_api/model/ScheduledClass.class
 com/timetable/timetable_api/repository/CourseRepository.class
+com/timetable/timetable_api/controller/TimeSlotController.class
 com/timetable/timetable_api/model/CourseOffering.class
 com/timetable/timetable_api/repository/DesignationConstraintRepository.class
+com/timetable/timetable_api/dto/TimeSlotRequest.class
 com/timetable/timetable_api/controller/CourseOfferingController.class
 com/timetable/timetable_api/repository/DepartmentCourseRepository.class
 com/timetable/timetable_api/service/RoomManagementService.class
@@ -48,3 +52,4 @@ com/timetable/timetable_api/model/Section.class
 com/timetable/timetable_api/controller/FacultyPreferenceController.class
 com/timetable/timetable_api/dto/SectionCreationRequest.class
 com/timetable/timetable_api/service/CourseManagementService.class
+com/timetable/timetable_api/repository/TimeSlotRepository.class

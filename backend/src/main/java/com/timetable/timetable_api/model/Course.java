@@ -20,8 +20,13 @@ public class Course {
     @Column(name = "credit_hours", nullable = false)
     private Integer creditHours;
 
+    // --- THIS IS THE FIX ---
+    // We are telling Hibernate the exact SQL to use for this column,
+    // which includes a DEFAULT value.
+    @Column(name = "course_type")
+    private String courseType;
+
     // --- Getters and Setters ---
-    // (Generate them here)
 
     public Long getId() {
         return id;
@@ -53,5 +58,14 @@ public class Course {
 
     public void setCreditHours(Integer creditHours) {
         this.creditHours = creditHours;
+    }
+
+    // --- ADD GETTER/SETTER for courseType ---
+    public String getCourseType() {
+        return courseType;
+    }
+
+    public void setCourseType(String courseType) {
+        this.courseType = courseType;
     }
 }

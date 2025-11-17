@@ -11,13 +11,9 @@ public class Section {
     @Column(name = "section_id")
     private Long id;
 
-    // --- Relationship: Many-to-One with Department ---
-    // Many sections (e.g., "Section A", "Section B") can belong to one department.
     @ManyToOne
     @JoinColumn(name = "department_id", referencedColumnName = "department_id", nullable = false)
     private Department department;
-
-    // --- Standard Columns ---
 
     @Column(name = "name", nullable = false)
     private String name; // e.g., "Section A"
@@ -28,8 +24,12 @@ public class Section {
     @Column(name = "year", nullable = false)
     private Integer year; // e.g., 2025
 
+    // --- THIS IS THE FIX ---
+    // We add a default value for the new column.
+    @Column(name = "student_count", columnDefinition = "INT DEFAULT 45")
+    private Integer studentCount;
+
     // --- Getters and Setters ---
-    // (Generate them here)
 
     public Long getId() {
         return id;
@@ -69,5 +69,14 @@ public class Section {
 
     public void setYear(Integer year) {
         this.year = year;
+    }
+
+    // --- ADD GETTER/SETTER for studentCount ---
+    public Integer getStudentCount() {
+        return studentCount;
+    }
+
+    public void setStudentCount(Integer studentCount) {
+        this.studentCount = studentCount;
     }
 }

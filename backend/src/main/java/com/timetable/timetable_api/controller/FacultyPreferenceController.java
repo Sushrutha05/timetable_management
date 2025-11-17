@@ -21,7 +21,7 @@ public class FacultyPreferenceController {
      * Get all preferences for a specific faculty member.
      * Endpoint: GET /api/faculty/{facultyId}/preferences
      */
-    @GetMapping("/{facultyId}/preferences")
+    @GetMapping({"/{facultyId}/preferences", "/{facultyId}/timetable"})
     public ResponseEntity<List<FacultyPreference>> getPreferences(@PathVariable Long facultyId) {
         List<FacultyPreference> preferences = preferenceService.getPreferencesByFaculty(facultyId);
         return new ResponseEntity<>(preferences, HttpStatus.OK);
@@ -31,7 +31,7 @@ public class FacultyPreferenceController {
      * Set (or overwrite) the preferences for a specific faculty.
      * Endpoint: POST /api/faculty/{facultyId}/preferences
      */
-    @PostMapping("/{facultyId}/preferences")
+    @PostMapping({"/{facultyId}/preferences", "/{facultyId}/timetable"})
     public ResponseEntity<?> setPreferences(@PathVariable Long facultyId, @RequestBody FacultyPreferenceRequest request) {
         try {
             List<FacultyPreference> savedPreferences = preferenceService.setPreferences(facultyId, request);
