@@ -1,19 +1,22 @@
 package com.timetable.timetable_api.service;
 
+import com.timetable.timetable_api.dto.FacultyCreationRequest;
+import com.timetable.timetable_api.model.Department;
+import com.timetable.timetable_api.model.DesignationConstraint;
 import com.timetable.timetable_api.model.Faculty;
 import com.timetable.timetable_api.model.User;
+import com.timetable.timetable_api.repository.DepartmentRepository;
+import com.timetable.timetable_api.repository.DesignationConstraintRepository;
 import com.timetable.timetable_api.repository.FacultyRepository;
 import com.timetable.timetable_api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Service // Declares this as a Spring Service
+@Service
 public class FacultyManagementService {
-
-    // --- Dependency Injection ---
-    // We ask Spring to "inject" the repositories we need.
 
     @Autowired
     private FacultyRepository facultyRepository;
@@ -21,50 +24,83 @@ public class FacultyManagementService {
     @Autowired
     private UserRepository userRepository;
 
-    // You would also inject other repositories as needed, e.g., DepartmentRepository
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private DesignationConstraintRepository designationRepository;
 
     /**
-     * Business logic for creating a new faculty member.
-     * This is more complex than just saving a faculty.
-     * We need to create a User, save it, then link it to a new Faculty, and save that.
-     * (We'll simplify password hashing for now).
+     * Creates a new Faculty member along with their User account.
      */
-    public Faculty createFaculty(Faculty facultyData, String email, String password) {
+    @Transactional // Ensures if any step fails, everything is rolled back
+    public Faculty createFaculty(FacultyCreationRequest request) {
 
-        // 1. Create the User entity
+        // 0. Validate required fields are not null
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("Password is required");
+        }
+        if (request.getFirstName() == null || request.getFirstName().trim().isEmpty()) {
+            throw new RuntimeException("First name is required");
+        }
+        if (request.getDateOfJoining() == null) {
+            throw new RuntimeException("Date of joining is required");
+        }
+        if (request.getDateOfBirth() == null) {
+            throw new RuntimeException("Date of birth is required");
+        }
+        if (request.getDepartmentId() == null) {
+            throw new RuntimeException("Department ID is required");
+        }
+        if (request.getDesignation() == null || request.getDesignation().trim().isEmpty()) {
+            throw new RuntimeException("Designation is required");
+        }
+
+        // 1. Validate dependencies exist
+        // Debug: Check if department exists
+        Integer deptId = request.getDepartmentId();
+        Department department = departmentRepository.findById(deptId)
+                .orElseThrow(() -> {
+                    // Provide more helpful error message
+                    long totalDepartments = departmentRepository.count();
+                    return new RuntimeException("Department not found with ID: " + deptId + 
+                        ". Total departments in database: " + totalDepartments);
+                });
+
+        DesignationConstraint designation = designationRepository.findById(request.getDesignation())
+                .orElseThrow(() -> new RuntimeException("Designation not found: " + request.getDesignation()));
+
+        // 2. Create and Save the User Account
         User newUser = new User();
-        newUser.setEmail(email);
-        newUser.setPasswordHash(password); // In a real app, you'd HASH this password
-        newUser.setRole(2); // 2 = FACULTY
-
-        // 2. Save the new User to the DB
+        newUser.setEmail(request.getEmail());
+        // In a real app, ALWAYS hash passwords (e.g., BCrypt). Storing plain text for now.
+        newUser.setPasswordHash(request.getPassword());
+        newUser.setRole(2); // 2 = FACULTY role
         User savedUser = userRepository.save(newUser);
 
-        // 3. Link the saved User to the new Faculty profile
-        facultyData.setUser(savedUser);
+        // 3. Create and Save the Faculty Profile
+        Faculty newFaculty = new Faculty();
+        newFaculty.setUser(savedUser); // Link to the user we just created
+        newFaculty.setDepartment(department); // Link to the department
+        newFaculty.setDesignationConstraint(designation); // Link to designation rules
 
-        // 4. Save the new Faculty profile
-        // This will now have the user_id and department_id
-        return facultyRepository.save(facultyData);
+        newFaculty.setFirstName(request.getFirstName());
+        newFaculty.setLastName(request.getLastName());
+        newFaculty.setMiddleInitial(request.getMiddleInitial());
+        newFaculty.setDateOfJoining(request.getDateOfJoining());
+        newFaculty.setDateOfBirth(request.getDateOfBirth());
+
+        return facultyRepository.save(newFaculty);
     }
 
-    /**
-     * Gets a list of all faculty members.
-     * This is a simple pass-through.
-     */
     public List<Faculty> getAllFaculty() {
         return facultyRepository.findAll();
     }
 
-    /**
-     * Gets a single faculty member by their ID.
-     */
     public Faculty getFacultyById(Long id) {
-        // findById returns an Optional, so we use .orElse(null) for simplicity
         return facultyRepository.findById(id).orElse(null);
     }
-
-    // You would add other methods here for the Admin:
-    // - public Faculty updateFaculty(Long id, Faculty facultyDetails) { ... }
-    // - public void deleteFaculty(Long id) { ... }
 }

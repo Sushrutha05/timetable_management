@@ -1,12 +1,15 @@
 package com.timetable.timetable_api.controller;
 
+import com.timetable.timetable_api.dto.FacultyCreationRequest;
 import com.timetable.timetable_api.model.Faculty;
 import com.timetable.timetable_api.service.FacultyManagementService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,26 +26,34 @@ public class FacultyManagementController {
      * Body: JSON object with faculty details + email + password
      */
     @PostMapping
-    public ResponseEntity<Faculty> createFaculty(@RequestBody Map<String, Object> payload) {
-        // We use a Map here to extract the mixed data (Faculty object + email/password strings)
-        // In a real app, you'd use a dedicated DTO (Data Transfer Object) class.
-
-        // Extracting data manually for simplicity
-        String email = (String) payload.get("email");
-        String password = (String) payload.get("password");
-
-        // Converting the rest of the map to a Faculty object is tricky with a raw Map.
-        // For this example, let's assume we receive a structured DTO or handle it simpler.
-        // TO MAKE THIS RUNNABLE NOW: Let's use a helper method or DTO in the future.
-        // For now, I will simulate the service call to show the controller structure.
-
-        // TODO: Implement DTO for cleaner data extraction
-        // Faculty newFaculty = ... extract from payload ...
-
-        // Faculty savedFaculty = facultyService.createFaculty(newFaculty, email, password);
-
-        // return new ResponseEntity<>(savedFaculty, HttpStatus.CREATED);
-        return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED); // Placeholder
+    public ResponseEntity<?> createFaculty(@RequestBody FacultyCreationRequest request) {
+        try {
+            Faculty savedFaculty = facultyService.createFaculty(request);
+            return new ResponseEntity<>(savedFaculty, HttpStatus.CREATED);
+        } catch (DataIntegrityViolationException e) {
+            // Handle unique constraint violations (e.g., duplicate email)
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("email")) {
+                errorMessage = "Email already exists. Please use a different email address.";
+            } else if (errorMessage != null && errorMessage.contains("unique")) {
+                errorMessage = "A record with this information already exists.";
+            } else {
+                errorMessage = "Data integrity violation: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+            }
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", errorMessage);
+            return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        } catch (RuntimeException e) {
+            // Handle business logic exceptions (e.g., Department not found, Designation not found)
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            // Handle any other unexpected exceptions
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "An error occurred while creating the faculty: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        }
     }
 
     // --- A Simpler Version for testing right now ---
