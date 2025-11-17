@@ -28,7 +28,7 @@ public class RoomManagementController {
             return new ResponseEntity<>(savedRoom, HttpStatus.CREATED);
         } catch (Exception e) {
             // Catches errors like duplicate room_number
-            return new ResponseEntity<>("Error: "V + e.getMessage(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 

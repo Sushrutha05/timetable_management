@@ -2,8 +2,10 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/config/SecurityConfig.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/controller/CourseManagementController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/controller/FacultyManagementController.java
+/home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/controller/RoomManagementController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/dto/CourseCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/dto/FacultyCreationRequest.java
+/home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/dto/RoomCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/model/Course.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/model/CourseOffering.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/model/Department.java
@@ -29,3 +31,4 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/repository/UserRepository.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/CourseManagementService.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/FacultyManagementService.java
+/home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/RoomManagementService.java
