@@ -46,3 +46,4 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/RoomManagementService.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/SectionManagementService.java
 /home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/TimetableGenerationService.java
+/home/vaibhav-sharma/Projects/schedulePlanner/timetable_management/backend/src/main/java/com/timetable/timetable_api/service/TimetableViewService.java

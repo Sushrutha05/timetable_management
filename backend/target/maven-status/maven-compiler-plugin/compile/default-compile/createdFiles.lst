@@ -9,6 +9,7 @@ com/timetable/timetable_api/service/FacultyPreferenceService.class
 com/timetable/timetable_api/controller/RoomManagementController.class
 com/timetable/timetable_api/model/DepartmentCourseId.class
 com/timetable/timetable_api/model/Course.class
+com/timetable/timetable_api/service/TimetableViewService.class
 com/timetable/timetable_api/controller/TimetableGenerationController.class
 com/timetable/timetable_api/service/CourseOfferingService.class
 com/timetable/timetable_api/model/FacultyPreference.class
