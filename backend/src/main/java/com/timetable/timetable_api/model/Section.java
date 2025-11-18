@@ -24,9 +24,7 @@ public class Section {
     @Column(name = "year", nullable = false)
     private Integer year; // e.g., 2025
 
-    // --- THIS IS THE FIX ---
-    // We add a default value for the new column.
-    @Column(name = "student_count", columnDefinition = "INT DEFAULT 45")
+    @Column(name = "student_count")
     private Integer studentCount;
 
     // --- Getters and Setters ---
