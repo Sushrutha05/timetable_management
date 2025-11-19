@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { courseAPI } from '../../utils/api';
+import courseTemplate from '../common/course_template.csv';
 
 const ManageCourses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [bulkMessage, setBulkMessage] = useState({ type: '', text: '' });
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     courseCode: '',
     courseName: '',
     creditHours: '',
   });
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadCourses();
@@ -48,6 +53,38 @@ const ManageCourses = () => {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+
+    if (!bulkFile) {
+      setBulkMessage({ type: 'error', text: 'Please select a CSV file before uploading.' });
+      return;
+    }
+
+    setBulkUploading(true);
+    setBulkMessage({ type: '', text: '' });
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', bulkFile);
+      const result = await courseAPI.bulkUpload(formDataUpload);
+      const count = Array.isArray(result) ? result.length : 0;
+      setBulkMessage({
+        type: 'success',
+        text: `Successfully imported ${count} course${count === 1 ? '' : 's'}.`,
+      });
+      setBulkFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      loadCourses();
+    } catch (error) {
+      setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
+    } finally {
+      setBulkUploading(false);
     }
   };
 
@@ -128,6 +165,67 @@ const ManageCourses = () => {
           </form>
         </div>
       )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Bulk Import Courses via CSV</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Upload a CSV file with the required headers to add multiple courses simultaneously.
+          </p>
+          {bulkMessage.text && (
+            <div
+              className={`mb-4 p-3 rounded-md ${
+                bulkMessage.type === 'success'
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                  : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+              }`}
+            >
+              {bulkMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleBulkUpload}>
+            <div className="flex flex-col gap-4">
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setBulkFile(file);
+                }}
+                className="block w-full text-sm text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
+              />
+              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 gap-2 flex-wrap">
+                <a
+                  href={courseTemplate}
+                  download="course_template.csv"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Download sample CSV template
+                </a>
+                <span>Headers: courseCode, courseName, creditHours</span>
+              </div>
+              <button
+                type="submit"
+                disabled={bulkUploading}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50"
+              >
+                {bulkUploading ? 'Uploading...' : 'Upload CSV'}
+              </button>
+            </div>
+          </form>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">CSV Format Tips</h3>
+          <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-2">
+            <li>Include the header row exactly as shown.</li>
+            <li>`creditHours` must be a whole number.</li>
+            <li>Course codes must be unique.</li>
+            <li>Use UTF-8 encoding to avoid parsing issues.</li>
+          </ul>
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">

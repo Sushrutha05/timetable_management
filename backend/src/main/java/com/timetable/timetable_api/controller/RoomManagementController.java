@@ -7,8 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/room") // Base URL for this controller
@@ -29,6 +32,28 @@ public class RoomManagementController {
         } catch (Exception e) {
             // Catches errors like duplicate room_number
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Bulk upload rooms via CSV.
+     * Endpoint: POST /api/admin/room/upload
+     */
+    @PostMapping("/upload")
+    public ResponseEntity<?> bulkUploadRooms(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Uploaded file is empty."));
+        }
+
+        try {
+            List<Room> createdRooms = roomService.bulkCreateRooms(file.getInputStream());
+            return new ResponseEntity<>(createdRooms, HttpStatus.CREATED);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Failed to read uploaded file: " + e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Bulk upload failed: " + e.getMessage()));
         }
     }
 

@@ -48,6 +48,10 @@ export const courseAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  bulkUpload: (formData) => fetchAPI('/api/admin/course/upload', {
+    method: 'POST',
+    body: formData,
+  }),
 };
 
 // Admin APIs - Rooms
@@ -58,6 +62,10 @@ export const roomAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  bulkUpload: (formData) => fetchAPI('/api/admin/room/upload', {
+    method: 'POST',
+    body: formData,
+  }),
 };
 
 // Admin APIs - Sections
@@ -67,6 +75,10 @@ export const sectionAPI = {
   create: (data) => fetchAPI('/api/admin/section', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  bulkUpload: (formData) => fetchAPI('/api/admin/section/upload', {
+    method: 'POST',
+    body: formData,
   }),
 };
 
