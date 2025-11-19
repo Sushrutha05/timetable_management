@@ -2,9 +2,12 @@ const API_BASE_URL = 'http://localhost:8080';
 
 // Generic fetch wrapper
 async function fetchAPI(endpoint, options = {}) {
+  const isFormData = options.body instanceof FormData;
+  const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...defaultHeaders,
       ...options.headers,
     },
     ...options,
@@ -30,6 +33,10 @@ export const facultyAPI = {
   create: (data) => fetchAPI('/api/admin/faculty', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  bulkUpload: (formData) => fetchAPI('/api/admin/faculty/upload', {
+    method: 'POST',
+    body: formData,
   }),
 };
 

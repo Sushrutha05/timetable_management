@@ -8,7 +8,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,9 +58,27 @@ public class FacultyManagementController {
         }
     }
 
-    // --- A Simpler Version for testing right now ---
-    // Let's make a version that just takes the Faculty object directly,
-    // assuming User creation happens separately or is mocked for now.
+    /**
+     * Bulk upload faculty via CSV.
+     * Endpoint: POST /api/admin/faculty/upload
+     */
+    @PostMapping("/upload")
+    public ResponseEntity<?> bulkUploadFaculty(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Uploaded file is empty."));
+        }
+
+        try {
+            List<Faculty> createdFaculty = facultyService.bulkCreateFaculty(file.getInputStream());
+            return new ResponseEntity<>(createdFaculty, HttpStatus.CREATED);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Failed to read uploaded file: " + e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Bulk upload failed: " + e.getMessage()));
+        }
+    }
 
     /**
      * Get all faculty members.
