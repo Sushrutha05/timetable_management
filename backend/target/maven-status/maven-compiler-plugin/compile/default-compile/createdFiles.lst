@@ -13,6 +13,7 @@ com/timetable/timetable_api/model/Course.class
 com/timetable/timetable_api/service/TimetableViewService.class
 com/timetable/timetable_api/service/TimeSlotService.class
 com/timetable/timetable_api/controller/TimetableGenerationController.class
+com/timetable/timetable_api/service/TimetableReportService.class
 com/timetable/timetable_api/service/CourseOfferingService.class
 com/timetable/timetable_api/model/FacultyPreference.class
 com/timetable/timetable_api/controller/FacultyManagementController.class

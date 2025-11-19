@@ -14,4 +14,6 @@ public interface ScheduledClassRepository extends JpaRepository<ScheduledClass, 
     // Spring Data JPA will automatically build a query that joins
     // ScheduledClass -> CourseOffering -> Faculty -> ID
     List<ScheduledClass> findByCourseOffering_Faculty_Id(Long facultyId);
+
+    List<ScheduledClass> findByCourseOffering_Section_Id(Long sectionId);
 }

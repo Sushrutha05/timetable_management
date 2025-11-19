@@ -46,4 +46,3 @@ public class TimeSlotRequest {
         this.breakSlot = breakSlot;
     }
 }
-

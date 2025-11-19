@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { timetableAPI } from '../../utils/api';
+import { timetableAPI, sectionAPI, API_BASE_URL } from '../../utils/api';
 
 const ViewTimetable = () => {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState('');
 
   useEffect(() => {
     loadTimetable();
+    loadSections();
   }, []);
 
   const loadTimetable = async () => {
@@ -23,6 +26,24 @@ const ViewTimetable = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadSections = async () => {
+    try {
+      const data = await sectionAPI.getAll();
+      setSections(data || []);
+    } catch (error) {
+      setMessage({ type: 'error', text: `Error loading sections: ${error.message}` });
+    }
+  };
+
+  const handleDownload = () => {
+    if (!selectedSection) {
+      setMessage({ type: 'error', text: 'Please select a section to download.' });
+      return;
+    }
+    const url = `${API_BASE_URL}/api/admin/timetable/download/${selectedSection}?type=xlsx`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Group classes by day and time for better visualization
@@ -53,15 +74,39 @@ const ViewTimetable = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">View Full Timetable</h2>
-        <button
-          onClick={loadTimetable}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
-        >
-          {loading ? 'Loading...' : 'Refresh'}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className="w-full sm:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">Select Section</option>
+              {sections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.name} ({section.department?.name || 'Dept'})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50"
+              disabled={!sections.length}
+            >
+              Download Timetable
+            </button>
+          </div>
+          <button
+            onClick={loadTimetable}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {message.text && (
