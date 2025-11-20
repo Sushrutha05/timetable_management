@@ -1,0 +1,361 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { facultyAPI } from '../../utils/api';
+import facultyTemplate from '../common/faculty_template.csv';
+
+const ManageFaculty = () => {
+  const [facultyList, setFacultyList] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [bulkMessage, setBulkMessage] = useState({ type: '', text: '' });
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    middleInitial: '',
+    dateOfJoining: '',
+    dateOfBirth: '',
+    designation: '',
+    departmentId: '',
+  });
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    loadFaculty();
+  }, []);
+
+  const loadFaculty = async () => {
+    setLoading(true);
+    try {
+      const data = await facultyAPI.getAll();
+      setFacultyList(data);
+      setMessage({ type: '', text: '' });
+    } catch (error) {
+      setMessage({ type: 'error', text: `Error loading faculty: ${error.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const payload = {
+        ...formData,
+        departmentId: formData.departmentId ? parseInt(formData.departmentId) : null,
+      };
+      await facultyAPI.create(payload);
+      setMessage({ type: 'success', text: 'Faculty created successfully!' });
+      setShowForm(false);
+      setFormData({
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        middleInitial: '',
+        dateOfJoining: '',
+        dateOfBirth: '',
+        designation: '',
+        departmentId: '',
+      });
+      loadFaculty();
+    } catch (error) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+
+    if (!bulkFile) {
+      setBulkMessage({ type: 'error', text: 'Please select a CSV file before uploading.' });
+      return;
+    }
+
+    setBulkUploading(true);
+    setBulkMessage({ type: '', text: '' });
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', bulkFile);
+      const result = await facultyAPI.bulkUpload(formDataUpload);
+      const count = Array.isArray(result) ? result.length : 0;
+      setBulkMessage({
+        type: 'success',
+        text: `Successfully imported ${count} faculty record${count === 1 ? '' : 's'}.`,
+      });
+      setBulkFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      loadFaculty();
+    } catch (error) {
+      setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Manage Faculty</h2>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+        >
+          {showForm ? 'Cancel' : 'Add New Faculty'}
+        </button>
+      </div>
+
+      {message.text && (
+        <div
+          className={`mb-4 p-3 rounded-md ${
+            message.type === 'success'
+              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Create New Faculty</h3>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Middle Initial
+                </label>
+                <input
+                  type="text"
+                  maxLength={1}
+                  value={formData.middleInitial}
+                  onChange={(e) => setFormData({ ...formData, middleInitial: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Designation
+                </label>
+                <input
+                  type="text"
+                  value={formData.designation}
+                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date of Joining
+                </label>
+                <input
+                  type="date"
+                  value={formData.dateOfJoining}
+                  onChange={(e) => setFormData({ ...formData, dateOfJoining: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Department ID
+                </label>
+                <input
+                  type="number"
+                  value={formData.departmentId}
+                  onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Creating...' : 'Create Faculty'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Bulk Import via CSV</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Upload a CSV file with the required headers to create multiple faculty records at once.
+          </p>
+          {bulkMessage.text && (
+            <div
+              className={`mb-4 p-3 rounded-md ${
+                bulkMessage.type === 'success'
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                  : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+              }`}
+            >
+              {bulkMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleBulkUpload}>
+            <div className="flex flex-col gap-4">
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setBulkFile(file);
+                }}
+                className="block w-full text-sm text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
+              />
+              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
+                <a
+                  href={facultyTemplate}
+                  download="faculty_template.csv"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Download sample CSV template
+                </a>
+                <span>Required headers: email, password, firstName, lastName, dateOfJoining, dateOfBirth, designation, departmentId</span>
+              </div>
+              <button
+                type="submit"
+                disabled={bulkUploading}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50"
+              >
+                {bulkUploading ? 'Uploading...' : 'Upload CSV'}
+              </button>
+            </div>
+          </form>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">CSV Format Tips</h3>
+          <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-2">
+            <li>Dates must use the YYYY-MM-DD format.</li>
+            <li>Department IDs should correspond to existing departments.</li>
+            <li>Each row must include an email and password for the faculty user.</li>
+            <li>Include a header row exactly matching the template column names.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Faculty List</h3>
+        </div>
+        {loading && !showForm ? (
+          <div className="p-4 text-center text-gray-600 dark:text-gray-400">Loading...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Designation</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Department</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {facultyList.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                      No faculty members found
+                    </td>
+                  </tr>
+                ) : (
+                  facultyList.map((faculty) => (
+                    <tr key={faculty.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {faculty.firstName} {faculty.middleInitial} {faculty.lastName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.user?.email || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.designation || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.department?.name || 'N/A'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ManageFaculty;
+
