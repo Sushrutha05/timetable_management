@@ -34,6 +34,13 @@ export const facultyAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  update: (id, data) => fetchAPI(`/api/admin/faculty/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id) => fetchAPI(`/api/admin/faculty/${id}`, {
+    method: 'DELETE',
+  }),
   bulkUpload: (formData) => fetchAPI('/api/admin/faculty/upload', {
     method: 'POST',
     body: formData,
@@ -47,6 +54,13 @@ export const courseAPI = {
   create: (data) => fetchAPI('/api/admin/course', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  update: (id, data) => fetchAPI(`/api/admin/course/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id) => fetchAPI(`/api/admin/course/${id}`, {
+    method: 'DELETE',
   }),
   bulkUpload: (formData) => fetchAPI('/api/admin/course/upload', {
     method: 'POST',
@@ -62,6 +76,13 @@ export const roomAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  update: (id, data) => fetchAPI(`/api/admin/room/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id) => fetchAPI(`/api/admin/room/${id}`, {
+    method: 'DELETE',
+  }),
   bulkUpload: (formData) => fetchAPI('/api/admin/room/upload', {
     method: 'POST',
     body: formData,
@@ -75,6 +96,13 @@ export const sectionAPI = {
   create: (data) => fetchAPI('/api/admin/section', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  update: (id, data) => fetchAPI(`/api/admin/section/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id) => fetchAPI(`/api/admin/section/${id}`, {
+    method: 'DELETE',
   }),
   bulkUpload: (formData) => fetchAPI('/api/admin/section/upload', {
     method: 'POST',
@@ -100,6 +128,10 @@ export const timeSlotAPI = {
   getAll: () => fetchAPI('/api/admin/timeslot'),
   create: (data) => fetchAPI('/api/admin/timeslot', {
     method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id, data) => fetchAPI(`/api/admin/timeslot/${id}`, {
+    method: 'PUT',
     body: JSON.stringify(data),
   }),
   delete: (id) => fetchAPI(`/api/admin/timeslot/${id}`, {

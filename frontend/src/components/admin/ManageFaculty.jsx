@@ -22,6 +22,20 @@ const ManageFaculty = () => {
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkUploading, setBulkUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    middleInitial: '',
+    dateOfJoining: '',
+    dateOfBirth: '',
+    designation: '',
+    departmentId: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     loadFaculty();
@@ -101,6 +115,67 @@ const ManageFaculty = () => {
       setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
     } finally {
       setBulkUploading(false);
+    }
+  };
+
+  // ----- CRUD: Edit/Delete Handlers -----
+  const startEdit = (faculty) => {
+    setEditingId(faculty.id);
+    setEditData({
+      email: faculty.user?.email || '',
+      password: '',
+      firstName: faculty.firstName || '',
+      lastName: faculty.lastName || '',
+      middleInitial: faculty.middleInitial || '',
+      dateOfJoining: faculty.dateOfJoining || '',
+      dateOfBirth: faculty.dateOfBirth || '',
+      designation: faculty.designationConstraint?.designation || faculty.designation || '',
+      departmentId: faculty.department?.id || '',
+    });
+    setMessage({ type: '', text: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({
+      email: '', password: '', firstName: '', lastName: '', middleInitial: '',
+      dateOfJoining: '', dateOfBirth: '', designation: '', departmentId: '',
+    });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    try {
+      const payload = {
+        ...editData,
+        departmentId: editData.departmentId ? parseInt(editData.departmentId) : null,
+      };
+      await facultyAPI.update(editingId, payload);
+      setMessage({ type: 'success', text: 'Faculty updated successfully!' });
+      setSaving(false);
+      setEditingId(null);
+      loadFaculty();
+    } catch (error) {
+      setSaving(false);
+      setMessage({ type: 'error', text: `Update failed: ${error.message}` });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this faculty?')) return;
+    setDeletingId(id);
+    try {
+      await facultyAPI.delete(id);
+      loadFaculty();
+    } catch (error) {
+      setMessage({ type: 'error', text: `Delete failed: ${error.message}` });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -310,6 +385,118 @@ const ManageFaculty = () => {
         </div>
       </div>
 
+      {editingId && (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Faculty</h3>
+          <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={editData.email}
+                  onChange={(e) => handleEditChange('email', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={editData.password}
+                  onChange={(e) => handleEditChange('password', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editData.firstName}
+                  onChange={(e) => handleEditChange('firstName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editData.lastName}
+                  onChange={(e) => handleEditChange('lastName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Initial</label>
+                <input
+                  type="text"
+                  maxLength={1}
+                  value={editData.middleInitial}
+                  onChange={(e) => handleEditChange('middleInitial', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
+                <input
+                  type="text"
+                  value={editData.designation}
+                  onChange={(e) => handleEditChange('designation', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Joining</label>
+                <input
+                  type="date"
+                  value={editData.dateOfJoining}
+                  onChange={(e) => handleEditChange('dateOfJoining', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                <input
+                  type="date"
+                  value={editData.dateOfBirth}
+                  onChange={(e) => handleEditChange('dateOfBirth', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department ID</label>
+                <input
+                  type="number"
+                  value={editData.departmentId}
+                  onChange={(e) => handleEditChange('departmentId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Faculty List</h3>
@@ -326,12 +513,13 @@ const ManageFaculty = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Email</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Designation</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Department</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {facultyList.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
                       No faculty members found
                     </td>
                   </tr>
@@ -345,6 +533,23 @@ const ManageFaculty = () => {
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.user?.email || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.designation || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.department?.name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEdit(faculty)}
+                            className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(faculty.id)}
+                            disabled={deletingId === faculty.id}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-60"
+                          >
+                            {deletingId === faculty.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

@@ -47,6 +47,33 @@ public class SectionManagementService {
     }
 
     /**
+     * Updates an existing Section.
+     */
+    public Section updateSection(Long id, SectionCreationRequest request) {
+        Section existing = sectionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Section not found with ID: " + id));
+
+        Department department = departmentRepository.findById(request.getDepartmentId())
+                .orElseThrow(() -> new RuntimeException("Department not found with ID: " + request.getDepartmentId()));
+
+        existing.setDepartment(department);
+        existing.setName(request.getName());
+        existing.setSemester(request.getSemester());
+        existing.setYear(request.getYear());
+
+        return sectionRepository.save(existing);
+    }
+
+    /**
+     * Deletes an existing Section.
+     */
+    public void deleteSection(Long id) {
+        Section existing = sectionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Section not found with ID: " + id));
+        sectionRepository.delete(existing);
+    }
+
+    /**
      * Bulk create sections from CSV input.
      */
     public List<Section> bulkCreateSections(InputStream inputStream) {

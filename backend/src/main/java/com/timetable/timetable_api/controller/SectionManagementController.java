@@ -36,6 +36,34 @@ public class SectionManagementController {
     }
 
     /**
+     * Update a Section.
+     * Endpoint: PUT /api/admin/section/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateSection(@PathVariable Long id, @RequestBody SectionCreationRequest request) {
+        try {
+            Section updatedSection = sectionService.updateSection(id, request);
+            return new ResponseEntity<>(updatedSection, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Delete a Section.
+     * Endpoint: DELETE /api/admin/section/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteSection(@PathVariable Long id) {
+        try {
+            sectionService.deleteSection(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
      * Bulk upload sections via CSV.
      * Endpoint: POST /api/admin/section/upload
      */

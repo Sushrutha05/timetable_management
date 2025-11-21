@@ -36,6 +36,34 @@ public class CourseManagementController {
     }
 
     /**
+     * Update a Course.
+     * Endpoint: PUT /api/admin/course/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateCourse(@PathVariable Long id, @RequestBody CourseCreationRequest request) {
+        try {
+            Course updatedCourse = courseService.updateCourse(id, request);
+            return new ResponseEntity<>(updatedCourse, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Delete a Course.
+     * Endpoint: DELETE /api/admin/course/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCourse(@PathVariable Long id) {
+        try {
+            courseService.deleteCourse(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
      * Bulk upload courses via CSV.
      * Endpoint: POST /api/admin/course/upload
      */

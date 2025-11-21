@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TimetableGenerationService {
@@ -24,254 +26,348 @@ public class TimetableGenerationService {
     @Autowired
     private ScheduledClassRepository scheduledClassRepository;
 
+    /**
+     * Advanced deterministic timetable generation with strict constraints.
+     * Phases:
+     *  A) Setup: clear old classes, prepare data and trackers
+     *  B) Prioritized loop (LAB first, then THEORY by descending creditHours)
+     *  C) Constraints: room-type, capacity, resource conflicts, faculty limits, block integrity
+     *  D) Post-processing and failure reporting
+     */
     @Transactional
     public List<ScheduledClass> generateTimetable() {
+        // Phase A: Setup and data initialization
         scheduledClassRepository.deleteAll();
 
-        List<CourseOffering> offeringsToSchedule = offeringRepository.findAll();
-        List<Room> allRooms = roomRepository.findAll();
-        List<TimeSlot> timeSlots = timeSlotRepository.findAll();
+        List<CourseOffering> allOfferings = offeringRepository.findAll();
+        if (allOfferings.isEmpty()) {
+            return List.of();
+        }
 
+        List<Room> allRooms = roomRepository.findAll();
         if (allRooms.isEmpty()) {
             throw new RuntimeException("No rooms configured. Please add rooms before generating a timetable.");
         }
-        if (timeSlots.isEmpty()) {
+
+        // Get all non-break timeslots, sorted by day and time
+        List<TimeSlot> allTimeSlots = timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc()
+                .stream()
+                .filter(ts -> !ts.isBreakSlot())
+                .sorted(Comparator
+                        .comparing((TimeSlot ts) -> dayOrder(ts.getDayOfWeek()))
+                        .thenComparing(TimeSlot::getStartTime))
+                .collect(Collectors.toList());
+        if (allTimeSlots.isEmpty()) {
             throw new RuntimeException("No time slots configured. Please create time slots before generating a timetable.");
         }
 
-        timeSlots.sort(Comparator
-                .comparing((TimeSlot slot) -> dayOrder(slot.getDayOfWeek()))
-                .thenComparing(TimeSlot::getStartTime));
+        // Index time slots by day for faster block checks
+        Map<String, List<TimeSlot>> slotsByDay = allTimeSlots.stream()
+                .collect(Collectors.groupingBy(ts -> normalizeDay(ts.getDayOfWeek()),
+                        LinkedHashMap::new,
+                        Collectors.toList()));
 
-        Map<Faculty, Integer> facultyHours = new HashMap<>();
-        Set<String> occupiedSlots = new HashSet<>();
-        List<ScheduledClass> generatedClasses = new ArrayList<>();
+        // Workload tracking: facultyId -> current scheduled credit hours
+        Map<Long, Integer> facultyCreditHours = new HashMap<>();
 
-        for (CourseOffering offering : offeringsToSchedule) {
+        // Conflict tracking: resource occupancy keys
+        Set<String> occupied = new HashSet<>();
+
+        // Phase B: Prioritized scheduling list (LAB first, then THEORY high to low by credit hours)
+        List<CourseOffering> labsFirst = allOfferings.stream()
+                .sorted((a, b) -> {
+                    String ta = courseType(a.getCourse());
+                    String tb = courseType(b.getCourse());
+                    if (!ta.equals(tb)) {
+                        // LAB before THEORY
+                        if (isLab(ta)) return -1;
+                        if (isLab(tb)) return 1;
+                    }
+                    // For same type (usually THEORY), schedule higher credit hours first
+                    int ca = Optional.ofNullable(a.getCourse().getCreditHours()).orElse(1);
+                    int cb = Optional.ofNullable(b.getCourse().getCreditHours()).orElse(1);
+                    return Integer.compare(cb, ca);
+                })
+                .collect(Collectors.toList());
+
+        List<ScheduledClass> created = new ArrayList<>();
+
+        for (CourseOffering offering : labsFirst) {
             Course course = offering.getCourse();
-            String courseType = course.getCourseType() == null ? "THEORY" : course.getCourseType();
-            boolean isLab = "LAB".equalsIgnoreCase(courseType);
+            Section section = offering.getSection();
+            Faculty faculty = offering.getFaculty();
 
-            boolean scheduled = isLab
-                    ? scheduleLabOffering(offering, allRooms, timeSlots, facultyHours, occupiedSlots, generatedClasses)
-                    : scheduleTheoryOffering(offering, allRooms, timeSlots, facultyHours, occupiedSlots, generatedClasses);
+            if (course == null || section == null || faculty == null) {
+                throw new RuntimeException("Invalid offering links (course/faculty/section missing) for offering id=" + offering.getId());
+            }
 
-            if (!scheduled) {
-                throw new RuntimeException("Could not schedule " + course.getCourseName() +
-                        " for " + offering.getSection().getName() + ". No available slots.");
+            boolean isLab = isLab(courseType(course));
+            int slotsNeeded = isLab ? 3 : Math.max(1, Optional.ofNullable(course.getCreditHours()).orElse(1));
+
+            boolean placed = false;
+
+            // Deterministic day ordering (MON .. SUN)
+            for (String day : orderedDays()) {
+                List<TimeSlot> daySlots = slotsByDay.getOrDefault(day, List.of());
+                if (daySlots.isEmpty()) continue;
+
+                // LAB: search consecutive block of 3; THEORY: iterate single slots sequentially with possible repetition until slotsNeeded fulfilled
+                if (isLab) {
+                    // Try each starting index for a contiguous block of 3
+                    for (int i = 0; i <= daySlots.size() - 3; i++) {
+                        List<TimeSlot> block = daySlots.subList(i, i + 3);
+                        if (!isContiguous(block)) continue;
+
+                        // Try each room deterministically
+                        for (Room room : allRooms) {
+                            if (!roomTypeMatches(room, course)) continue;
+                            if (!hasCapacity(room, section)) continue;
+
+                            if (!checkResourcesFree(offering, room, block, occupied, facultyCreditHours, slotsNeeded)) {
+                                continue;
+                            }
+
+                            // Book block
+                            for (TimeSlot slot : block) {
+                                created.add(save(offering, room, slot));
+                                occupy(offering, room, slot, occupied);
+                            }
+                            incrementHours(faculty, facultyCreditHours, slotsNeeded);
+                            placed = true;
+                            break;
+                        }
+                        if (placed) break;
+                    }
+                } else {
+                    int scheduled = 0;
+                    outer:
+                    for (TimeSlot slot : daySlots) {
+                        for (Room room : allRooms) {
+                            if (!roomTypeMatches(room, course)) continue;
+                            if (!hasCapacity(room, section)) continue;
+
+                            if (!checkResourcesFree(offering, room, List.of(slot), occupied, facultyCreditHours, 1)) {
+                                continue;
+                            }
+
+                            created.add(save(offering, room, slot));
+                            occupy(offering, room, slot, occupied);
+                            incrementHours(faculty, facultyCreditHours, 1);
+                            scheduled++;
+                            if (scheduled >= slotsNeeded) { placed = true; break outer; }
+                            // else continue to pick next available slot on same day (then next days)
+                        }
+                    }
+                }
+
+                if (placed) break; // next offering
+            }
+
+            if (!placed) {
+                String msg = String.format("Failed to schedule [%s] for section [%s]. Capacity or time slots exhausted.",
+                        course.getCourseCode(), section.getName());
+                throw new RuntimeException(msg);
             }
         }
 
-        return generatedClasses;
+        return created;
     }
 
-    private boolean scheduleTheoryOffering(
-            CourseOffering offering,
-            List<Room> rooms,
-            List<TimeSlot> timeSlots,
-            Map<Faculty, Integer> facultyHours,
-            Set<String> occupiedSlots,
-            List<ScheduledClass> generatedClasses
-    ) {
-        Course course = offering.getCourse();
-        int slotsNeeded = Math.max(1, course.getCreditHours() == null ? 1 : course.getCreditHours());
-        int scheduled = 0;
-
-        for (TimeSlot slot : timeSlots) {
-            if (slot.isBreakSlot()) {
-                continue;
-            }
-
-            for (Room room : rooms) {
-                if (!isRoomCompatible(room, course)) {
-                    continue;
-                }
-                if (!isSlotAvailable(offering, room, slot, occupiedSlots, facultyHours, 1)) {
-                    continue;
-                }
-
-                ScheduledClass scheduledClass = createScheduledClass(offering, room, slot);
-                generatedClasses.add(scheduledClass);
-                markSlot(offering, room, slot, occupiedSlots);
-                incrementFacultyHours(offering.getFaculty(), facultyHours, 1);
-
-                scheduled++;
-                if (scheduled >= slotsNeeded) {
-                    return true;
-                }
-                break; // Move to the next time slot after booking this one
-            }
+    /**
+     * Update a scheduled class slot with conflict checks. Transactional.
+     */
+    @Transactional
+    public ScheduledClass updateScheduledClassSlot(com.timetable.timetable_api.dto.UpdateSlotRequest req) {
+        if (req.getScheduledClassId() == null || req.getNewRoomId() == null
+                || req.getNewDayOfWeek() == null || req.getNewStartTime() == null) {
+            throw new RuntimeException("Missing required fields in request");
         }
 
-        return false;
+        ScheduledClass sc = scheduledClassRepository.findById(req.getScheduledClassId())
+                .orElseThrow(() -> new RuntimeException("Scheduled class not found: " + req.getScheduledClassId()));
+
+        Room room = roomRepository.findById(req.getNewRoomId())
+                .orElseThrow(() -> new RuntimeException("Room not found: " + req.getNewRoomId()));
+
+        String day = req.getNewDayOfWeek().trim().toUpperCase();
+
+        // Resolve end time by matching the TimeSlot record with new day+start
+        TimeSlot newSlot = timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc().stream()
+                .filter(ts -> !ts.isBreakSlot())
+                .filter(ts -> day.equals(ts.getDayOfWeek().trim().toUpperCase()))
+                .filter(ts -> req.getNewStartTime().equals(ts.getStartTime()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Invalid time slot: " + day + " " + req.getNewStartTime()));
+
+        CourseOffering off = sc.getCourseOffering();
+        if (off == null || off.getCourse() == null || off.getSection() == null || off.getFaculty() == null) {
+            throw new RuntimeException("Scheduled class has invalid offering links");
+        }
+
+        // Physical constraints
+        if (!roomTypeMatches(room, off.getCourse())) {
+            throw new RuntimeException("Conflict: Room type incompatible with course type");
+        }
+        if (!hasCapacity(room, off.getSection())) {
+            throw new RuntimeException("Conflict: Room capacity insufficient for section");
+        }
+
+        // Resource conflicts at the requested time
+        // Room
+        boolean roomBusy = scheduledClassRepository
+                .findByRoom_IdAndDayOfWeekAndStartTime(room.getId(), day, req.getNewStartTime())
+                .stream()
+                .anyMatch(other -> !Objects.equals(other.getId(), sc.getId()));
+        if (roomBusy) {
+            throw new RuntimeException("Conflict: Room is already occupied at that time");
+        }
+
+        // Faculty/Section conflicts: any class for the same faculty/section at the same time
+        List<ScheduledClass> sameTime = scheduledClassRepository.findByDayOfWeekAndStartTime(day, req.getNewStartTime());
+        boolean facultyBusy = sameTime.stream()
+                .anyMatch(other -> !Objects.equals(other.getId(), sc.getId())
+                        && other.getCourseOffering() != null
+                        && other.getCourseOffering().getFaculty() != null
+                        && Objects.equals(other.getCourseOffering().getFaculty().getId(), off.getFaculty().getId()));
+        if (facultyBusy) {
+            throw new RuntimeException("Conflict: Faculty is already scheduled at that time");
+        }
+        boolean sectionBusy = sameTime.stream()
+                .anyMatch(other -> !Objects.equals(other.getId(), sc.getId())
+                        && other.getCourseOffering() != null
+                        && other.getCourseOffering().getSection() != null
+                        && Objects.equals(other.getCourseOffering().getSection().getId(), off.getSection().getId()));
+        if (sectionBusy) {
+            throw new RuntimeException("Conflict: Section is already scheduled at that time");
+        }
+
+        // If all good, apply update
+        sc.setRoom(room);
+        sc.setDayOfWeek(day);
+        sc.setStartTime(req.getNewStartTime());
+        sc.setEndTime(newSlot.getEndTime());
+        return scheduledClassRepository.save(sc);
     }
 
-    private boolean scheduleLabOffering(
-            CourseOffering offering,
-            List<Room> rooms,
-            List<TimeSlot> timeSlots,
-            Map<Faculty, Integer> facultyHours,
-            Set<String> occupiedSlots,
-            List<ScheduledClass> generatedClasses
-    ) {
-        for (int i = 0; i <= timeSlots.size() - 3; i++) {
-            List<TimeSlot> block = timeSlots.subList(i, i + 3);
-            if (!isValidLabBlock(block)) {
-                continue;
-            }
+    // ---------------- helper methods ----------------
 
-            for (Room room : rooms) {
-                if (!isRoomCompatible(room, offering.getCourse())) {
-                    continue;
-                }
-                if (!areSlotsAvailableForBlock(offering, room, block, occupiedSlots, facultyHours)) {
-                    continue;
-                }
-
-                for (TimeSlot slot : block) {
-                    ScheduledClass scheduledClass = createScheduledClass(offering, room, slot);
-                    generatedClasses.add(scheduledClass);
-                    markSlot(offering, room, slot, occupiedSlots);
-                    incrementFacultyHours(offering.getFaculty(), facultyHours, 1);
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean isValidLabBlock(List<TimeSlot> block) {
-        if (block.size() != 3) {
-            return false;
-        }
-
-        String day = block.get(0).getDayOfWeek();
+    private boolean isContiguous(List<TimeSlot> block) {
+        if (block.size() < 2) return false;
+        String day = normalizeDay(block.get(0).getDayOfWeek());
         for (int i = 0; i < block.size() - 1; i++) {
-            TimeSlot current = block.get(i);
-            TimeSlot next = block.get(i + 1);
-
-            if (current.isBreakSlot() || next.isBreakSlot()) {
-                return false;
-            }
-            if (!day.equalsIgnoreCase(next.getDayOfWeek())) {
-                return false;
-            }
-            if (!current.getEndTime().equals(next.getStartTime())) {
-                return false;
-            }
+            TimeSlot a = block.get(i);
+            TimeSlot b = block.get(i + 1);
+            if (a.isBreakSlot() || b.isBreakSlot()) return false;
+            if (!normalizeDay(a.getDayOfWeek()).equals(day)) return false;
+            LocalTime ae = a.getEndTime();
+            LocalTime bs = b.getStartTime();
+            if (ae == null || bs == null || !ae.equals(bs)) return false;
         }
-        return !block.get(2).isBreakSlot();
+        return true;
     }
 
-    private boolean isRoomCompatible(Room room, Course course) {
-        if (room.getType() == null) {
-            return false;
+    private boolean roomTypeMatches(Room room, Course course) {
+        String rtype = room.getType() == null ? "" : room.getType().trim().toUpperCase();
+        String ctype = courseType(course);
+        if (isLab(ctype)) {
+            return "LAB".equalsIgnoreCase(rtype);
         }
-        String courseType = course.getCourseType() == null ? "THEORY" : course.getCourseType();
-        return room.getType().equalsIgnoreCase(courseType);
+        // THEORY must be in a CLASSROOM (allow synonyms THEORY/CLASSROOM)
+        return "CLASSROOM".equalsIgnoreCase(rtype) || "THEORY".equalsIgnoreCase(rtype);
     }
 
     private boolean hasCapacity(Room room, Section section) {
         Integer capacity = room.getCapacity();
         Integer studentCount = section.getStudentCount();
-        int required = studentCount == null ? 45 : studentCount;
+        int required = studentCount == null ? 30 : studentCount; // sensible default
         return capacity != null && capacity >= required;
     }
 
-    private boolean isSlotAvailable(
+    private boolean checkResourcesFree(
             CourseOffering offering,
             Room room,
-            TimeSlot slot,
-            Set<String> occupiedSlots,
-            Map<Faculty, Integer> facultyHours,
-            int durationHours
+            List<TimeSlot> slots,
+            Set<String> occupied,
+            Map<Long, Integer> facultyHours,
+            int hoursToAdd
     ) {
-        if (slot.isBreakSlot()) {
-            return false;
-        }
-        if (!hasCapacity(room, offering.getSection())) {
-            return false;
-        }
+        Faculty faculty = offering.getFaculty();
+        Section section = offering.getSection();
 
-        String roomKey = composeKey("ROOM", room.getId(), slot);
-        String facultyKey = composeKey("FACULTY", offering.getFaculty().getId(), slot);
-        String sectionKey = composeKey("SECTION", offering.getSection().getId(), slot);
+        // Faculty workload check
+        int current = facultyHours.getOrDefault(faculty.getId(), 0);
+        int limit = getFacultyMaxHours(faculty);
+        if (current + hoursToAdd > limit) return false;
 
-        if (occupiedSlots.contains(roomKey)
-                || occupiedSlots.contains(facultyKey)
-                || occupiedSlots.contains(sectionKey)) {
-            return false;
-        }
-
-        return hasFacultyHoursAvailable(offering.getFaculty(), facultyHours, durationHours);
-    }
-
-    private boolean areSlotsAvailableForBlock(
-            CourseOffering offering,
-            Room room,
-            List<TimeSlot> block,
-            Set<String> occupiedSlots,
-            Map<Faculty, Integer> facultyHours
-    ) {
-        if (!hasCapacity(room, offering.getSection())) {
-            return false;
-        }
-        if (!hasFacultyHoursAvailable(offering.getFaculty(), facultyHours, block.size())) {
-            return false;
-        }
-
-        for (TimeSlot slot : block) {
-            if (!isSlotAvailable(offering, room, slot, occupiedSlots, facultyHours, block.size())) {
+        // Resource availability across all slots in the block
+        for (TimeSlot slot : slots) {
+            String day = normalizeDay(slot.getDayOfWeek());
+            String roomKey = key("ROOM", room.getId(), day, slot.getStartTime());
+            String facultyKey = key("FACULTY", faculty.getId(), day, slot.getStartTime());
+            String sectionKey = key("SECTION", section.getId(), day, slot.getStartTime());
+            if (occupied.contains(roomKey) || occupied.contains(facultyKey) || occupied.contains(sectionKey)) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean hasFacultyHoursAvailable(Faculty faculty, Map<Faculty, Integer> facultyHours, int hoursToAdd) {
-        int current = facultyHours.getOrDefault(faculty, 0);
-        int limit = getFacultyLimit(faculty);
-        return current + hoursToAdd <= limit;
+    private void occupy(CourseOffering offering, Room room, TimeSlot slot, Set<String> occupied) {
+        String day = normalizeDay(slot.getDayOfWeek());
+        occupied.add(key("ROOM", room.getId(), day, slot.getStartTime()));
+        occupied.add(key("FACULTY", offering.getFaculty().getId(), day, slot.getStartTime()));
+        occupied.add(key("SECTION", offering.getSection().getId(), day, slot.getStartTime()));
     }
 
-    private int getFacultyLimit(Faculty faculty) {
-        DesignationConstraint constraint = faculty.getDesignationConstraint();
-        if (constraint == null || constraint.getMaxLectureHours() == null) {
-            return Integer.MAX_VALUE;
-        }
-        return constraint.getMaxLectureHours();
+    private void incrementHours(Faculty faculty, Map<Long, Integer> facultyHours, int inc) {
+        facultyHours.merge(faculty.getId(), inc, Integer::sum);
     }
 
-    private ScheduledClass createScheduledClass(CourseOffering offering, Room room, TimeSlot slot) {
-        ScheduledClass scheduledClass = new ScheduledClass();
-        scheduledClass.setCourseOffering(offering);
-        scheduledClass.setRoom(room);
-        scheduledClass.setDayOfWeek(slot.getDayOfWeek());
-        scheduledClass.setStartTime(slot.getStartTime());
-        scheduledClass.setEndTime(slot.getEndTime());
-        return scheduledClassRepository.save(scheduledClass);
+    private ScheduledClass save(CourseOffering offering, Room room, TimeSlot slot) {
+        ScheduledClass sc = new ScheduledClass();
+        sc.setCourseOffering(offering);
+        sc.setRoom(room);
+        sc.setDayOfWeek(normalizeDay(slot.getDayOfWeek()));
+        sc.setStartTime(slot.getStartTime());
+        sc.setEndTime(slot.getEndTime());
+        return scheduledClassRepository.save(sc);
     }
 
-    private void markSlot(CourseOffering offering, Room room, TimeSlot slot, Set<String> occupiedSlots) {
-        occupiedSlots.add(composeKey("ROOM", room.getId(), slot));
-        occupiedSlots.add(composeKey("FACULTY", offering.getFaculty().getId(), slot));
-        occupiedSlots.add(composeKey("SECTION", offering.getSection().getId(), slot));
+    private int getFacultyMaxHours(Faculty faculty) {
+        DesignationConstraint dc = faculty.getDesignationConstraint();
+        if (dc == null) return Integer.MAX_VALUE;
+        int lec = Optional.ofNullable(dc.getMaxLectureHours()).orElse(0);
+        int lab = Optional.ofNullable(dc.getMaxLabHours()).orElse(0);
+        // Use combined limit to avoid under-counting mixed loads
+        return lec + lab;
     }
 
-    private void incrementFacultyHours(Faculty faculty, Map<Faculty, Integer> facultyHours, int increment) {
-        facultyHours.put(faculty, facultyHours.getOrDefault(faculty, 0) + increment);
+    private String courseType(Course course) {
+        String t = course == null ? null : course.getCourseType();
+        return (t == null || t.isBlank()) ? "THEORY" : t.trim().toUpperCase();
     }
 
-    private String composeKey(String type, Number id, TimeSlot slot) {
-        return type + "_" + id + "_" + slot.getDayOfWeek() + "_" + slot.getStartTime();
+    private boolean isLab(String type) {
+        return "LAB".equalsIgnoreCase(type);
+    }
+
+    private String key(String resource, Number id, String day, LocalTime start) {
+        return resource + "_" + id + "_" + day + "_" + (start == null ? "" : start.toString());
+    }
+
+    private List<String> orderedDays() {
+        return List.of("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY");
+    }
+
+    private String normalizeDay(String day) {
+        if (day == null) return "";
+        return day.trim().toUpperCase();
     }
 
     private int dayOrder(String day) {
-        if (day == null) {
-            return 8;
-        }
+        if (day == null) return 8;
         try {
-            return DayOfWeek.valueOf(day.toUpperCase()).getValue();
+            return DayOfWeek.valueOf(day.trim().toUpperCase()).getValue();
         } catch (IllegalArgumentException ex) {
             return 8;
         }

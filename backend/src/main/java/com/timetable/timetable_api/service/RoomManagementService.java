@@ -36,6 +36,29 @@ public class RoomManagementService {
     }
 
     /**
+     * Updates an existing room.
+     */
+    public Room updateRoom(Integer id, RoomCreationRequest request) {
+        Room existing = roomRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Room not found with ID: " + id));
+
+        existing.setRoomNumber(request.getRoomNumber());
+        existing.setType(request.getType());
+        existing.setCapacity(request.getCapacity());
+
+        return roomRepository.save(existing);
+    }
+
+    /**
+     * Deletes a room.
+     */
+    public void deleteRoom(Integer id) {
+        Room existing = roomRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Room not found with ID: " + id));
+        roomRepository.delete(existing);
+    }
+
+    /**
      * Bulk create rooms from CSV input.
      */
     public List<Room> bulkCreateRooms(InputStream inputStream) {

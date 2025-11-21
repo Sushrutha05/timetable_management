@@ -46,43 +46,10 @@ public class FacultyManagementService {
      */
     @Transactional // Ensures if any step fails, everything is rolled back
     public Faculty createFaculty(FacultyCreationRequest request) {
+        validateFacultyRequest(request);
 
-        // 0. Validate required fields are not null
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            throw new RuntimeException("Email is required");
-        }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new RuntimeException("Password is required");
-        }
-        if (request.getFirstName() == null || request.getFirstName().trim().isEmpty()) {
-            throw new RuntimeException("First name is required");
-        }
-        if (request.getDateOfJoining() == null) {
-            throw new RuntimeException("Date of joining is required");
-        }
-        if (request.getDateOfBirth() == null) {
-            throw new RuntimeException("Date of birth is required");
-        }
-        if (request.getDepartmentId() == null) {
-            throw new RuntimeException("Department ID is required");
-        }
-        if (request.getDesignation() == null || request.getDesignation().trim().isEmpty()) {
-            throw new RuntimeException("Designation is required");
-        }
-
-        // 1. Validate dependencies exist
-        // Debug: Check if department exists
-        Integer deptId = request.getDepartmentId();
-        Department department = departmentRepository.findById(deptId)
-                .orElseThrow(() -> {
-                    // Provide more helpful error message
-                    long totalDepartments = departmentRepository.count();
-                    return new RuntimeException("Department not found with ID: " + deptId +
-                        ". Total departments in database: " + totalDepartments);
-                });
-
-        DesignationConstraint designation = designationRepository.findById(request.getDesignation())
-                .orElseThrow(() -> new RuntimeException("Designation not found: " + request.getDesignation()));
+        Department department = resolveDepartment(request.getDepartmentId());
+        DesignationConstraint designation = resolveDesignation(request.getDesignation());
 
         // 2. Create and Save the User Account
         User newUser = new User();
@@ -105,6 +72,49 @@ public class FacultyManagementService {
         newFaculty.setDateOfBirth(request.getDateOfBirth());
 
         return facultyRepository.save(newFaculty);
+    }
+
+    /**
+     * Updates an existing faculty member (and related user record).
+     */
+    @Transactional
+    public Faculty updateFaculty(Long facultyId, FacultyCreationRequest request) {
+        validateFacultyRequest(request);
+
+        Faculty existing = facultyRepository.findById(facultyId)
+                .orElseThrow(() -> new RuntimeException("Faculty not found with ID: " + facultyId));
+
+        User linkedUser = existing.getUser();
+        if (linkedUser == null) {
+            throw new RuntimeException("Faculty record is missing the associated user account.");
+        }
+
+        Department department = resolveDepartment(request.getDepartmentId());
+        DesignationConstraint designation = resolveDesignation(request.getDesignation());
+
+        linkedUser.setEmail(request.getEmail());
+        linkedUser.setPasswordHash(request.getPassword());
+        userRepository.save(linkedUser);
+
+        existing.setDepartment(department);
+        existing.setDesignationConstraint(designation);
+        existing.setFirstName(request.getFirstName());
+        existing.setLastName(request.getLastName());
+        existing.setMiddleInitial(request.getMiddleInitial());
+        existing.setDateOfJoining(request.getDateOfJoining());
+        existing.setDateOfBirth(request.getDateOfBirth());
+
+        return facultyRepository.save(existing);
+    }
+
+    /**
+     * Deletes a faculty member (User is removed via ON DELETE CASCADE).
+     */
+    @Transactional
+    public void deleteFaculty(Long facultyId) {
+        Faculty existing = facultyRepository.findById(facultyId)
+                .orElseThrow(() -> new RuntimeException("Faculty not found with ID: " + facultyId));
+        facultyRepository.delete(existing);
     }
 
     /**
@@ -147,6 +157,44 @@ public class FacultyManagementService {
 
     public Faculty getFacultyById(Long id) {
         return facultyRepository.findById(id).orElse(null);
+    }
+
+    private void validateFacultyRequest(FacultyCreationRequest request) {
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("Password is required");
+        }
+        if (request.getFirstName() == null || request.getFirstName().trim().isEmpty()) {
+            throw new RuntimeException("First name is required");
+        }
+        if (request.getDateOfJoining() == null) {
+            throw new RuntimeException("Date of joining is required");
+        }
+        if (request.getDateOfBirth() == null) {
+            throw new RuntimeException("Date of birth is required");
+        }
+        if (request.getDepartmentId() == null) {
+            throw new RuntimeException("Department ID is required");
+        }
+        if (request.getDesignation() == null || request.getDesignation().trim().isEmpty()) {
+            throw new RuntimeException("Designation is required");
+        }
+    }
+
+    private Department resolveDepartment(Integer deptId) {
+        return departmentRepository.findById(deptId)
+                .orElseThrow(() -> {
+                    long totalDepartments = departmentRepository.count();
+                    return new RuntimeException("Department not found with ID: " + deptId +
+                            ". Total departments in database: " + totalDepartments);
+                });
+    }
+
+    private DesignationConstraint resolveDesignation(String designationCode) {
+        return designationRepository.findById(designationCode)
+                .orElseThrow(() -> new RuntimeException("Designation not found: " + designationCode));
     }
 
     private Map<String, Integer> mapHeaderIndexes(String headerLine) {
