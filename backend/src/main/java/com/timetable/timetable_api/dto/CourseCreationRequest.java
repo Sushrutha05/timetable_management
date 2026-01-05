@@ -5,6 +5,7 @@ public class CourseCreationRequest {
     private String courseCode;
     private String courseName;
     private Integer creditHours;
+    private String courseType;
 
     // --- Getters and Setters ---
     // (You can generate these in your IDE)
@@ -31,5 +32,13 @@ public class CourseCreationRequest {
 
     public void setCreditHours(Integer creditHours) {
         this.creditHours = creditHours;
+    }
+
+    public String getCourseType() {
+        return courseType;
+    }
+
+    public void setCourseType(String courseType) {
+        this.courseType = courseType;
     }
 }

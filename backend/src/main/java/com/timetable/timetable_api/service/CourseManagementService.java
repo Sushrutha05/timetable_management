@@ -33,8 +33,33 @@ public class CourseManagementService {
         newCourse.setCourseCode(request.getCourseCode());
         newCourse.setCourseName(request.getCourseName());
         newCourse.setCreditHours(request.getCreditHours());
+        newCourse.setCourseType(request.getCourseType());
 
         return courseRepository.save(newCourse);
+    }
+
+    /**
+     * Updates an existing course.
+     */
+    public Course updateCourse(Long id, CourseCreationRequest request) {
+        Course existing = courseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Course not found with ID: " + id));
+
+        existing.setCourseCode(request.getCourseCode());
+        existing.setCourseName(request.getCourseName());
+        existing.setCreditHours(request.getCreditHours());
+        existing.setCourseType(request.getCourseType());
+
+        return courseRepository.save(existing);
+    }
+
+    /**
+     * Deletes a course by ID.
+     */
+    public void deleteCourse(Long id) {
+        Course existing = courseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Course not found with ID: " + id));
+        courseRepository.delete(existing);
     }
 
     /**
@@ -108,6 +133,9 @@ public class CourseManagementService {
             request.setCourseCode(getValue(values, headerIndex, "coursecode"));
             request.setCourseName(getValue(values, headerIndex, "coursename"));
             request.setCreditHours(Integer.parseInt(getValue(values, headerIndex, "credithours")));
+            if (headerIndex.containsKey("coursetype")) {
+                request.setCourseType(getValue(values, headerIndex, "coursetype"));
+            }
             return request;
         } catch (NumberFormatException ex) {
             throw new RuntimeException("Invalid number format on row " + rowNumber + ": " + ex.getMessage(), ex);

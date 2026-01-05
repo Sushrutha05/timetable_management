@@ -36,6 +36,34 @@ public class RoomManagementController {
     }
 
     /**
+     * Update a Room.
+     * Endpoint: PUT /api/admin/room/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateRoom(@PathVariable Integer id, @RequestBody RoomCreationRequest request) {
+        try {
+            Room updatedRoom = roomService.updateRoom(id, request);
+            return new ResponseEntity<>(updatedRoom, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Delete a Room.
+     * Endpoint: DELETE /api/admin/room/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteRoom(@PathVariable Integer id) {
+        try {
+            roomService.deleteRoom(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
      * Bulk upload rooms via CSV.
      * Endpoint: POST /api/admin/room/upload
      */

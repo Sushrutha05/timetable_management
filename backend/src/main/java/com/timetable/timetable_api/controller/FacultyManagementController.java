@@ -59,6 +59,47 @@ public class FacultyManagementController {
     }
 
     /**
+     * Update an existing Faculty member.
+     * Endpoint: PUT /api/admin/faculty/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateFaculty(@PathVariable Long id, @RequestBody FacultyCreationRequest request) {
+        try {
+            Faculty updatedFaculty = facultyService.updateFaculty(id, request);
+            return new ResponseEntity<>(updatedFaculty, HttpStatus.OK);
+        } catch (DataIntegrityViolationException e) {
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("email")) {
+                errorMessage = "Email already exists. Please use a different email address.";
+            } else if (errorMessage != null && errorMessage.contains("unique")) {
+                errorMessage = "A record with this information already exists.";
+            } else {
+                errorMessage = "Data integrity violation: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+            }
+            return new ResponseEntity<>(Map.of("error", errorMessage), HttpStatus.BAD_REQUEST);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(Map.of("error", e.getMessage()), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            return new ResponseEntity<>(Map.of("error", "An error occurred while updating the faculty: " + e.getMessage()),
+                    HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Delete a Faculty member.
+     * Endpoint: DELETE /api/admin/faculty/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteFaculty(@PathVariable Long id) {
+        try {
+            facultyService.deleteFaculty(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(Map.of("error", e.getMessage()), HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
      * Bulk upload faculty via CSV.
      * Endpoint: POST /api/admin/faculty/upload
      */

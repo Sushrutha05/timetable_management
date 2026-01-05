@@ -1,5 +1,6 @@
 package com.timetable.timetable_api.controller;
 
+import com.timetable.timetable_api.dto.UpdateSlotRequest;
 import com.timetable.timetable_api.model.ScheduledClass;
 import com.timetable.timetable_api.service.TimetableGenerationService;
 import com.timetable.timetable_api.service.TimetableReportService;
@@ -50,6 +51,22 @@ public class TimetableGenerationController {
     public ResponseEntity<List<ScheduledClass>> getFullTimetable() {
         List<ScheduledClass> timetable = timetableViewService.getFullTimetable();
         return new ResponseEntity<>(timetable, HttpStatus.OK);
+    }
+
+    /**
+     * Update a scheduled class slot (drag-and-drop support)
+     * Endpoint: POST /api/admin/timetable/update-slot
+     */
+    @PostMapping("/update-slot")
+    public ResponseEntity<?> updateScheduledSlot(@RequestBody UpdateSlotRequest request) {
+        try {
+            ScheduledClass updated = timetableService.updateScheduledClassSlot(request);
+            return new ResponseEntity<>(updated, HttpStatus.OK);
+        } catch (RuntimeException ex) {
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception ex) {
+            return new ResponseEntity<>("Unexpected error: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**

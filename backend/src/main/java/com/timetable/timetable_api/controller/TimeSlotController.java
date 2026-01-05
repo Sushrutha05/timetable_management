@@ -33,6 +33,16 @@ public class TimeSlotController {
         return new ResponseEntity<>(slots, HttpStatus.OK);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateTimeSlot(@PathVariable Long id, @RequestBody TimeSlotRequest request) {
+        try {
+            TimeSlot updated = timeSlotService.updateTimeSlot(id, request);
+            return new ResponseEntity<>(updated, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTimeSlot(@PathVariable Long id) {
         try {

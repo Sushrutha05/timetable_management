@@ -16,6 +16,14 @@ const ManageRooms = () => {
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkUploading, setBulkUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({
+    roomNumber: '',
+    type: 'CLASSROOM',
+    capacity: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     loadRooms();
@@ -85,6 +93,55 @@ const ManageRooms = () => {
       setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
     } finally {
       setBulkUploading(false);
+    }
+  };
+
+  // ---- Edit/Delete Handlers ----
+  const startEdit = (room) => {
+    setEditingId(room.id);
+    setEditData({
+      roomNumber: room.roomNumber || '',
+      type: room.type || 'CLASSROOM',
+      capacity: String(room.capacity ?? ''),
+    });
+    setMessage({ type: '', text: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({ roomNumber: '', type: 'CLASSROOM', capacity: '' });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    try {
+      const payload = { ...editData, capacity: parseInt(editData.capacity) };
+      await roomAPI.update(editingId, payload);
+      setSaving(false);
+      setEditingId(null);
+      setMessage({ type: 'success', text: 'Room updated successfully!' });
+      loadRooms();
+    } catch (error) {
+      setSaving(false);
+      setMessage({ type: 'error', text: `Update failed: ${error.message}` });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this room?')) return;
+    setDeletingId(id);
+    try {
+      await roomAPI.delete(id);
+      loadRooms();
+    } catch (error) {
+      setMessage({ type: 'error', text: `Delete failed: ${error.message}` });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -229,6 +286,65 @@ const ManageRooms = () => {
         </div>
       </div>
 
+      {editingId && (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Room</h3>
+          <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Number</label>
+                <input
+                  type="text"
+                  required
+                  value={editData.roomNumber}
+                  onChange={(e) => handleEditChange('roomNumber', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+                <select
+                  required
+                  value={editData.type}
+                  onChange={(e) => handleEditChange('type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="CLASSROOM">Classroom</option>
+                  <option value="LAB">Lab</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Capacity</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={editData.capacity}
+                  onChange={(e) => handleEditChange('capacity', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Rooms List</h3>
@@ -244,12 +360,13 @@ const ManageRooms = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Room Number</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Capacity</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {rooms.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan="5" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
                       No rooms found
                     </td>
                   </tr>
@@ -260,6 +377,23 @@ const ManageRooms = () => {
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{room.roomNumber}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{room.type}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{room.capacity}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEdit(room)}
+                            className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(room.id)}
+                            disabled={deletingId === room.id}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-60"
+                          >
+                            {deletingId === room.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

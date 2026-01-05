@@ -5,6 +5,15 @@ const ManageTimeSlots = () => {
   const [timeSlots, setTimeSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({
+    dayOfWeek: 'MONDAY',
+    startTime: '',
+    endTime: '',
+    isBreak: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     dayOfWeek: 'MONDAY',
@@ -58,7 +67,7 @@ const ManageTimeSlots = () => {
       return;
     }
 
-    setLoading(true);
+    setDeletingId(id);
     setMessage({ type: '', text: '' });
 
     try {
@@ -68,7 +77,48 @@ const ManageTimeSlots = () => {
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
-      setLoading(false);
+      setDeletingId(null);
+    }
+  };
+
+  const startEdit = (slot) => {
+    setEditingId(slot.id);
+    const formatTime = (t) => (t || '').toString().substring(0,5);
+    setEditData({
+      dayOfWeek: slot.dayOfWeek || 'MONDAY',
+      startTime: formatTime(slot.startTime),
+      endTime: formatTime(slot.endTime),
+      isBreak: !!slot.breakSlot,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({ dayOfWeek: 'MONDAY', startTime: '', endTime: '', isBreak: false });
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    try {
+      const payload = {
+        dayOfWeek: editData.dayOfWeek,
+        startTime: editData.startTime + ':00',
+        endTime: editData.endTime + ':00',
+        break: editData.isBreak,
+      };
+      await timeSlotAPI.update(editingId, payload);
+      setSaving(false);
+      setEditingId(null);
+      setMessage({ type: 'success', text: 'Time slot updated successfully!' });
+      loadTimeSlots();
+    } catch (error) {
+      setSaving(false);
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
     }
   };
 
@@ -204,12 +254,21 @@ const ManageTimeSlots = () => {
                         {slot.breakSlot ? 'Yes' : 'No'}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <button
-                          onClick={() => handleDelete(slot.id)}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-xs"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEdit(slot)}
+                            className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(slot.id)}
+                            disabled={deletingId === slot.id}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-xs disabled:opacity-60"
+                          >
+                            {deletingId === slot.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

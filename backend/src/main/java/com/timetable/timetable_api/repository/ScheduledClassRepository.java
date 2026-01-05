@@ -10,10 +10,13 @@ import java.util.List; // Add this import
 public interface ScheduledClassRepository extends JpaRepository<ScheduledClass, Long> {
     // Primary Key 'class_id' is a Long
 
-    // --- ADD THIS METHOD ---
-    // Spring Data JPA will automatically build a query that joins
-    // ScheduledClass -> CourseOffering -> Faculty -> ID
+    // Existing helper queries
     List<ScheduledClass> findByCourseOffering_Faculty_Id(Long facultyId);
-
     List<ScheduledClass> findByCourseOffering_Section_Id(Long sectionId);
+
+    // Conflict checks for a specific day + start time
+    List<ScheduledClass> findByDayOfWeekAndStartTime(String dayOfWeek, java.time.LocalTime startTime);
+
+    // Room-time conflicts on a specific day/time
+    List<ScheduledClass> findByRoom_IdAndDayOfWeekAndStartTime(Integer roomId, String dayOfWeek, java.time.LocalTime startTime);
 }
