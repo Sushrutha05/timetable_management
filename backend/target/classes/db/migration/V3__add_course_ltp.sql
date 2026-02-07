@@ -1,0 +1,4 @@
+ALTER TABLE courses
+ADD COLUMN lecture_hours INTEGER DEFAULT 0,
+ADD COLUMN tutorial_hours INTEGER DEFAULT 0,
+ADD COLUMN practical_hours INTEGER DEFAULT 0;

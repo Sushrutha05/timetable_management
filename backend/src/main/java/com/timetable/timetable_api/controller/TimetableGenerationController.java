@@ -3,8 +3,11 @@ package com.timetable.timetable_api.controller;
 import com.timetable.timetable_api.dto.UpdateSlotRequest;
 import com.timetable.timetable_api.model.ScheduledClass;
 import com.timetable.timetable_api.service.TimetableGenerationService;
+import com.timetable.timetable_api.model.ScheduledClass;
+import com.timetable.timetable_api.service.TimetableGenerationService;
 import com.timetable.timetable_api.service.TimetableReportService;
 import com.timetable.timetable_api.service.TimetableViewService;
+import com.timetable.timetable_api.dto.UpdateSlotRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -75,11 +78,12 @@ public class TimetableGenerationController {
      */
     @GetMapping("/download/{sectionId}")
     public ResponseEntity<byte[]> downloadTimetable(@PathVariable Long sectionId,
-                                                    @RequestParam(name = "type", defaultValue = "xlsx") String fileType) {
+            @RequestParam(name = "type", defaultValue = "xlsx") String fileType) {
         byte[] fileBytes = timetableReportService.generateSectionTimetableFile(sectionId, fileType);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentType(
+                MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         headers.setContentDisposition(ContentDisposition.attachment()
                 .filename(String.format("Timetable_Section_%d.xlsx", sectionId))
                 .build());

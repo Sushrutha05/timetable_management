@@ -12,7 +12,7 @@ com/timetable/timetable_api/model/TimeSlot.class
 com/timetable/timetable_api/model/Course.class
 com/timetable/timetable_api/service/TimetableViewService.class
 com/timetable/timetable_api/service/TimeSlotService.class
-com/timetable/timetable_api/controller/TimetableGenerationController.class
+com/timetable/timetable_api/controller/TimetableExportController.class
 com/timetable/timetable_api/service/TimetableReportService.class
 com/timetable/timetable_api/service/CourseOfferingService.class
 com/timetable/timetable_api/model/FacultyPreference.class
@@ -21,6 +21,7 @@ com/timetable/timetable_api/model/User.class
 com/timetable/timetable_api/repository/CourseOfferingRepository.class
 com/timetable/timetable_api/model/Faculty.class
 com/timetable/timetable_api/dto/DesignationRequest.class
+com/timetable/timetable_api/service/PdfReportService.class
 com/timetable/timetable_api/config/SecurityConfig.class
 com/timetable/timetable_api/controller/AssignmentController.class
 com/timetable/timetable_api/service/FacultyManagementService.class

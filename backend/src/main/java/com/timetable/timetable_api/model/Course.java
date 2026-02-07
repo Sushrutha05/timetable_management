@@ -26,6 +26,15 @@ public class Course {
     @Column(name = "course_type")
     private String courseType;
 
+    @Column(name = "lecture_hours")
+    private Integer lectureHours = 0;
+
+    @Column(name = "tutorial_hours")
+    private Integer tutorialHours = 0;
+
+    @Column(name = "practical_hours")
+    private Integer practicalHours = 0;
+
     // --- Getters and Setters ---
 
     public Long getId() {
@@ -67,5 +76,29 @@ public class Course {
 
     public void setCourseType(String courseType) {
         this.courseType = courseType;
+    }
+
+    public Integer getLectureHours() {
+        return lectureHours;
+    }
+
+    public void setLectureHours(Integer lectureHours) {
+        this.lectureHours = lectureHours;
+    }
+
+    public Integer getTutorialHours() {
+        return tutorialHours;
+    }
+
+    public void setTutorialHours(Integer tutorialHours) {
+        this.tutorialHours = tutorialHours;
+    }
+
+    public Integer getPracticalHours() {
+        return practicalHours;
+    }
+
+    public void setPracticalHours(Integer practicalHours) {
+        this.practicalHours = practicalHours;
     }
 }
