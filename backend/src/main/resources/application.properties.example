@@ -2,16 +2,16 @@
 # SUPABASE DATABASE CONNECTION
 # ---------------------------------------------
 # Replace values with your Supabase connection details
-spring.datasource.url=jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?prepareThreshold=0
-spring.datasource.username=postgres.ofkrpsuifyhiudxsdniv
-spring.datasource.password=TTS202supa1
+spring.datasource.url=jdbc:postgresql://[YOUR_HOST]:[YOUR_PORT]/postgres?prepareThreshold=0
+spring.datasource.username=[YOUR_USERNAME]
+spring.datasource.password=[YOUR_PASSWORD]
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 
 # # fallback to local for development
-# spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/schedule_planner}
-# spring.datasource.username=${DB_USERNAME:vaibhav}
-# spring.datasource.password=${DB_PASSWORD:root}
+# spring.datasource.url=${DB_URL_LOCAL:jdbc:postgresql://localhost:5432/}
+# spring.datasource.username=${DB_USERNAME_LOCAL}
+# spring.datasource.password=${DB_PASSWORD_LOCAL}
 
 
 # ---------------------------------------------

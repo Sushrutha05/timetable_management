@@ -114,3 +114,6 @@ ON faculty_preferences(faculty_id);
 
 CREATE INDEX idx_faculty_pref_course
 ON faculty_preferences(course_id);
+
+
+
