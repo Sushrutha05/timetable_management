@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { facultyAPI } from '../../utils/api';
+import { facultyAPI, departmentAPI, designationAPI } from '../../utils/api';
 import facultyTemplate from '../common/faculty_template.csv';
 
 const ManageFaculty = ({ deptId }) => {
   const [facultyList, setFacultyList] = useState([]);
+  const [departmentList, setDepartmentList] = useState([]);
+  const [designationList, setDesignationList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [bulkMessage, setBulkMessage] = useState({ type: '', text: '' });
@@ -35,7 +37,21 @@ const ManageFaculty = ({ deptId }) => {
 
   useEffect(() => {
     loadFaculty();
+    loadMetadata();
   }, [deptId]);
+
+  const loadMetadata = async () => {
+    try {
+      const [depts, desigs] = await Promise.all([
+        departmentAPI.getAll(),
+        designationAPI.getAll(),
+      ]);
+      setDepartmentList(depts);
+      setDesignationList(desigs);
+    } catch (error) {
+      console.error("Error loading metadata:", error);
+    }
+  };
 
   const loadFaculty = async () => {
     setLoading(true);
@@ -191,8 +207,8 @@ const ManageFaculty = ({ deptId }) => {
       {message.text && (
         <div
           className={`mb-4 p-3 rounded-md ${message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+            : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
             }`}
         >
           {message.text}
@@ -268,25 +284,37 @@ const ManageFaculty = ({ deptId }) => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Designation
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.designation}
                   onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
+                >
+                  <option value="">Select Designation</option>
+                  {designationList.map((d) => (
+                    <option key={d.designation} value={d.designation}>
+                      {d.designation}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {!deptId && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Department ID
+                    Department
                   </label>
-                  <input
-                    type="number"
+                  <select
                     value={formData.departmentId}
                     onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  />
+                  >
+                    <option value="">Select Department</option>
+                    {departmentList.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>
@@ -310,8 +338,8 @@ const ManageFaculty = ({ deptId }) => {
           {bulkMessage.text && (
             <div
               className={`mb-4 p-3 rounded-md ${bulkMessage.type === 'success'
-                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                  : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
                 }`}
             >
               {bulkMessage.text}
@@ -364,79 +392,39 @@ const ManageFaculty = ({ deptId }) => {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Faculty</h3>
           <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={editData.email}
-                  onChange={(e) => handleEditChange('email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={editData.password}
-                  onChange={(e) => handleEditChange('password', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editData.firstName}
-                  onChange={(e) => handleEditChange('firstName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editData.lastName}
-                  onChange={(e) => handleEditChange('lastName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Initial</label>
-                <input
-                  type="text"
-                  maxLength={1}
-                  value={editData.middleInitial}
-                  onChange={(e) => handleEditChange('middleInitial', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
-                <input
-                  type="text"
-                  value={editData.designation}
-                  onChange={(e) => handleEditChange('designation', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              {!deptId && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department ID</label>
-                  <input
-                    type="number"
-                    value={editData.departmentId}
-                    onChange={(e) => handleEditChange('departmentId', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
+              <select
+                value={editData.designation}
+                onChange={(e) => handleEditChange('designation', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Select Designation</option>
+                {designationList.map((d) => (
+                  <option key={d.designation} value={d.designation}>
+                    {d.designation}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {!deptId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                <select
+                  value={editData.departmentId}
+                  onChange={(e) => handleEditChange('departmentId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">Select Department</option>
+                  {departmentList.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="mt-4 flex gap-3">
               <button
                 type="submit"
@@ -518,7 +506,7 @@ const ManageFaculty = ({ deptId }) => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

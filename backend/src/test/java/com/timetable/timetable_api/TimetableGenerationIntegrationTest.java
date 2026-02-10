@@ -68,8 +68,6 @@ public class TimetableGenerationIntegrationTest {
         Faculty faculty = new Faculty();
         faculty.setFirstName("Dr.");
         faculty.setLastName("Smith");
-        faculty.setDateOfJoining(java.time.LocalDate.now());
-        faculty.setDateOfBirth(java.time.LocalDate.of(1980, 1, 1));
         faculty.setUser(user);
         faculty.setDepartment(dept);
         faculty.setDesignationConstraint(dc);

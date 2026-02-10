@@ -165,6 +165,11 @@ export const offeringAPI = {
   }),
 };
 
+// Admin APIs - Departments
+export const departmentAPI = {
+  getAll: () => fetchAPI('/api/admin/department'),
+};
+
 // Admin APIs - Timetable
 export const timetableAPI = {
   generate: () => fetchAPI('/api/admin/timetable/generate', {

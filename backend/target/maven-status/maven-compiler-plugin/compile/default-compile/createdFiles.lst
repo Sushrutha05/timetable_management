@@ -16,6 +16,9 @@ com/timetable/timetable_api/controller/TimetableGenerationController.class
 com/timetable/timetable_api/controller/TimetableExportController.class
 com/timetable/timetable_api/service/TimetableReportService.class
 com/timetable/timetable_api/service/CourseOfferingService.class
+com/timetable/timetable_api/dto/FacultyTimetableEntry.class
+com/timetable/timetable_api/controller/AuthController.class
+com/timetable/timetable_api/dto/LoginResponse.class
 com/timetable/timetable_api/model/FacultyPreference.class
 com/timetable/timetable_api/controller/FacultyManagementController.class
 com/timetable/timetable_api/model/User.class
@@ -54,6 +57,7 @@ com/timetable/timetable_api/model/DesignationConstraint.class
 com/timetable/timetable_api/dto/FacultyPreferenceRequest.class
 com/timetable/timetable_api/controller/CourseManagementController.class
 com/timetable/timetable_api/repository/SectionRepository.class
+com/timetable/timetable_api/controller/FacultyTimetableController.class
 com/timetable/timetable_api/model/Section.class
 com/timetable/timetable_api/dto/LoginRequest.class
 com/timetable/timetable_api/controller/FacultyPreferenceController.class
