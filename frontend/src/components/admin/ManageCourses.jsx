@@ -230,8 +230,8 @@ const ManageCourses = ({ deptId }) => {
       {message.text && (
         <div
           className={`mb-4 p-3 rounded-md ${message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+            : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
             }`}
         >
           {message.text}
@@ -317,8 +317,8 @@ const ManageCourses = ({ deptId }) => {
           {bulkMessage.text && (
             <div
               className={`mb-4 p-3 rounded-md ${bulkMessage.type === 'success'
-                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                  : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
                 }`}
             >
               {bulkMessage.text}
@@ -345,7 +345,7 @@ const ManageCourses = ({ deptId }) => {
                 >
                   Download template
                 </a>
-                <span>Headers: courseCode, courseName, creditHours</span>
+                <span>Headers: courseCode, courseName, creditHours, semester (optional)</span>
               </div>
               <button
                 type="submit"

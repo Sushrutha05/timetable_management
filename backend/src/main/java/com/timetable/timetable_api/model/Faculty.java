@@ -41,9 +41,6 @@ public class Faculty {
     @Column(name = "middle_initial")
     private String middleInitial;
 
-    @Column(name = "middle_initial")
-    private String middleInitial;
-
     // date_of_birth and date_of_joining removed in V6 migration
 
     // --- Getters and Setters ---
