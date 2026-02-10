@@ -7,7 +7,8 @@ import jakarta.persistence.*; // Make sure to import from jakarta.persistence
 public class User {
 
     @Id // Marks this field as the Primary Key
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Tells Spring that PostgreSQL will auto-generate this ID (using BIGSERIAL)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Tells Spring that PostgreSQL will auto-generate this ID
+                                                        // (using BIGSERIAL)
     @Column(name = "user_id") // Maps this field to the "user_id" column
     private Long id;
 
@@ -20,9 +21,14 @@ public class User {
     @Column(name = "role", nullable = false) // Maps to the "role" column
     private Integer role; // 1 for ADMIN, 2 for FACULTY
 
+    @Column(name = "department_id") // Maps to the "department_id" column (Nullable for super-admin potentially,
+                                    // though strictly needed for Department Admin)
+    private Integer departmentId;
+
     // --- Getters and Setters ---
     // You need to add getters and setters for all fields so Spring can access them.
-    // Your IDE can generate these for you (Right-click -> Generate -> Getters and Setters).
+    // Your IDE can generate these for you (Right-click -> Generate -> Getters and
+    // Setters).
 
     public Long getId() {
         return id;
@@ -54,5 +60,13 @@ public class User {
 
     public void setRole(Integer role) {
         this.role = role;
+    }
+
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
     }
 }

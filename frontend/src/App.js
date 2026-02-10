@@ -41,6 +41,7 @@ function App() {
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
         onLogout={handleLogout}
+        deptId={deptId}
       />
     );
   }

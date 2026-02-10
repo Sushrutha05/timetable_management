@@ -53,6 +53,11 @@ public class AuthController {
             lastName = faculty.getLastName();
         }
 
+        // For non-faculty (e.g., Admin), try to get deptId from User entity
+        if (deptId == null && user.getDepartmentId() != null) {
+            deptId = user.getDepartmentId();
+        }
+
         LoginResponse response = new LoginResponse(
                 user.getId(),
                 user.getEmail(),

@@ -28,7 +28,11 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Admin APIs - Faculty
 export const facultyAPI = {
-  getAll: () => fetchAPI('/api/admin/faculty'),
+  getAll: (deptId) => {
+    const params = new URLSearchParams();
+    if (deptId) params.append('deptId', deptId);
+    return fetchAPI(`/api/admin/faculty?${params.toString()}`);
+  },
   getById: (id) => fetchAPI(`/api/admin/faculty/${id}`),
   create: (data) => fetchAPI('/api/admin/faculty', {
     method: 'POST',
@@ -41,15 +45,22 @@ export const facultyAPI = {
   delete: (id) => fetchAPI(`/api/admin/faculty/${id}`, {
     method: 'DELETE',
   }),
-  bulkUpload: (formData) => fetchAPI('/api/admin/faculty/upload', {
-    method: 'POST',
-    body: formData,
-  }),
+  bulkUpload: (formData, deptId) => {
+    return fetchAPI(`/api/admin/faculty/upload?deptId=${deptId}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 // Admin APIs - Courses
 export const courseAPI = {
-  getAll: () => fetchAPI('/api/admin/course'),
+  getAll: (deptId, semester) => {
+    const params = new URLSearchParams();
+    if (deptId) params.append('deptId', deptId);
+    if (semester) params.append('semester', semester);
+    return fetchAPI(`/api/admin/course?${params.toString()}`);
+  },
   getById: (id) => fetchAPI(`/api/admin/course/${id}`),
   create: (data) => fetchAPI('/api/admin/course', {
     method: 'POST',
@@ -62,10 +73,13 @@ export const courseAPI = {
   delete: (id) => fetchAPI(`/api/admin/course/${id}`, {
     method: 'DELETE',
   }),
-  bulkUpload: (formData) => fetchAPI('/api/admin/course/upload', {
-    method: 'POST',
-    body: formData,
-  }),
+  bulkUpload: (formData, deptId) => {
+    // Append deptId to URL or FormData? Controller expects Query Param.
+    return fetchAPI(`/api/admin/course/upload?deptId=${deptId}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 // Admin APIs - Rooms
