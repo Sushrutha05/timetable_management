@@ -1,7 +1,6 @@
 package com.timetable.timetable_api.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDate; // Import for the DATE type
 
 @Entity
 @Table(name = "faculty")
