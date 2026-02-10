@@ -38,6 +38,7 @@ public class AuthController {
         }
 
         Long facultyId = null;
+        Integer deptId = null;
         String firstName = null;
         String lastName = null;
 
@@ -47,6 +48,7 @@ public class AuthController {
         Faculty faculty = facultyRepository.findByUserId(user.getId());
         if (faculty != null) {
             facultyId = faculty.getId();
+            deptId = faculty.getDepartment().getId();
             firstName = faculty.getFirstName();
             lastName = faculty.getLastName();
         }
@@ -56,6 +58,7 @@ public class AuthController {
                 user.getEmail(),
                 user.getRole(),
                 facultyId,
+                deptId,
                 firstName,
                 lastName);
 

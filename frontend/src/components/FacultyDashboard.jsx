@@ -3,7 +3,7 @@ import Header from './Header';
 import SetPreferences from './faculty/SetPreferences';
 import ViewMyTimetable from './faculty/ViewMyTimetable';
 
-const FacultyDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
+const FacultyDashboard = ({ isDarkMode, toggleDarkMode, onLogout, facultyId, deptId }) => {
   const [currentPage, setCurrentPage] = useState('preferences');
 
   const menuItems = [
@@ -14,11 +14,11 @@ const FacultyDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
   const renderPage = () => {
     switch (currentPage) {
       case 'preferences':
-        return <SetPreferences />;
+        return <SetPreferences facultyId={facultyId} deptId={deptId} />;
       case 'timetable':
-        return <ViewMyTimetable />;
+        return <ViewMyTimetable facultyId={facultyId} />;
       default:
-        return <SetPreferences />;
+        return <SetPreferences facultyId={facultyId} deptId={deptId} />;
     }
   };
 
@@ -34,11 +34,10 @@ const FacultyDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                 <li key={item.id}>
                   <button
                     onClick={() => setCurrentPage(item.id)}
-                    className={`w-full text-left px-4 py-2 rounded-md transition-colors ${
-                      currentPage === item.id
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
+                    className={`w-full text-left px-4 py-2 rounded-md transition-colors ${currentPage === item.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
                   >
                     {item.label}
                   </button>

@@ -5,14 +5,17 @@ public class LoginResponse {
     private String email;
     private Integer role;
     private Long facultyId;
+    private Integer deptId;
     private String firstName;
     private String lastName;
 
-    public LoginResponse(Long userId, String email, Integer role, Long facultyId, String firstName, String lastName) {
+    public LoginResponse(Long userId, String email, Integer role, Long facultyId, Integer deptId, String firstName,
+            String lastName) {
         this.userId = userId;
         this.email = email;
         this.role = role;
         this.facultyId = facultyId;
+        this.deptId = deptId;
         this.firstName = firstName;
         this.lastName = lastName;
     }
@@ -48,6 +51,14 @@ public class LoginResponse {
 
     public void setFacultyId(Long facultyId) {
         this.facultyId = facultyId;
+    }
+
+    public Integer getDeptId() {
+        return deptId;
+    }
+
+    public void setDeptId(Integer deptId) {
+        this.deptId = deptId;
     }
 
     public String getFirstName() {

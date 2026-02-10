@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { facultyPreferenceAPI } from '../../utils/api';
 
-const ViewMyTimetable = () => {
-  const facultyId = 1; // Hard-coded as per requirements
+const ViewMyTimetable = ({ facultyId }) => {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
-    loadTimetable();
-  }, []);
+    if (facultyId) {
+      loadTimetable();
+    }
+  }, [facultyId]);
 
   const loadTimetable = async () => {
     setLoading(true);
@@ -20,11 +21,11 @@ const ViewMyTimetable = () => {
       // In a real system, this should return ScheduledClass objects filtered by faculty
       // For now, we'll try to fetch and display what we can
       const data = await facultyPreferenceAPI.getTimetable(facultyId);
-      
+
       // If the endpoint returns preferences instead of scheduled classes, we'll handle that
       // Otherwise, we expect it to return ScheduledClass objects
       setTimetable(Array.isArray(data) ? data : []);
-      
+
       if (data && data.length === 0) {
         setMessage({ type: 'info', text: 'No scheduled classes found. The timetable may not have been generated yet.' });
       }
@@ -98,6 +99,10 @@ const ViewMyTimetable = () => {
     return startTime && endTime ? `${startTime} - ${endTime}` : 'N/A';
   };
 
+  if (!facultyId) {
+    return <div className="p-4">Loading faculty details...</div>;
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -113,13 +118,12 @@ const ViewMyTimetable = () => {
 
       {message.text && (
         <div
-          className={`mb-4 p-3 rounded-md ${
-            message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : message.type === 'info'
+          className={`mb-4 p-3 rounded-md ${message.type === 'success'
+            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+            : message.type === 'info'
               ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
               : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-          }`}
+            }`}
         >
           {message.text}
         </div>

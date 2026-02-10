@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { facultyPreferenceAPI, courseAPI } from '../../utils/api';
 
-const SetPreferences = () => {
-  const facultyId = 1; // Hard-coded as per requirements
+const SetPreferences = ({ facultyId, deptId }) => {
   const [courses, setCourses] = useState([]);
+  const [semester, setSemester] = useState(1);
   const [preferences, setPreferences] = useState([{ courseId: '', priority: '' }]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
-    loadCourses();
-    loadPreferences();
-  }, []);
+    if (deptId) {
+      loadCourses(semester);
+    }
+  }, [deptId, semester]);
 
-  const loadCourses = async () => {
+  useEffect(() => {
+    if (facultyId) {
+      loadPreferences();
+    }
+  }, [facultyId]);
+
+  const loadCourses = async (sem) => {
     try {
-      const data = await courseAPI.getAll();
+      const data = await facultyPreferenceAPI.getCoursesBySemester(deptId, sem);
       setCourses(data);
     } catch (error) {
       setMessage({ type: 'error', text: `Error loading courses: ${error.message}` });
@@ -30,11 +37,12 @@ const SetPreferences = () => {
           data.map((pref) => ({
             courseId: pref.course?.id?.toString() || '',
             priority: pref.priority?.toString() || '',
+            // Store the full course object to display details even if not in current semester list
+            courseDetails: pref.course
           }))
         );
       }
     } catch (error) {
-      // Preferences might not exist yet, that's okay
       console.log('No existing preferences found');
     }
   };
@@ -60,7 +68,6 @@ const SetPreferences = () => {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // Filter out incomplete preferences
     const validPreferences = preferences.filter((pref) => pref.courseId && pref.priority);
 
     if (validPreferences.length === 0) {
@@ -86,22 +93,40 @@ const SetPreferences = () => {
     }
   };
 
+  if (!facultyId || !deptId) {
+    return <div className="p-4">Loading faculty details...</div>;
+  }
+
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Set Teaching Preferences</h2>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Set your preferences for courses you would like to teach. Lower priority numbers indicate higher preference.
+          Select a semester to view available courses, then set your priority.
         </p>
+      </div>
+
+      <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Filter Courses by Semester
+        </label>
+        <select
+          value={semester}
+          onChange={(e) => setSemester(parseInt(e.target.value))}
+          className="w-48 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+            <option key={sem} value={sem}>Semester {sem}</option>
+          ))}
+        </select>
       </div>
 
       {message.text && (
         <div
-          className={`mb-4 p-3 rounded-md ${
-            message.type === 'success'
+          className={`mb-4 p-3 rounded-md ${message.type === 'success'
               ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
               : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-          }`}
+            }`}
         >
           {message.text}
         </div>
@@ -123,7 +148,13 @@ const SetPreferences = () => {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                   >
                     <option value="">Select a course</option>
-                    {courses
+                    {[
+                      // Include the currently selected course even if it's not in the semester list
+                      ...(pref.courseDetails ? [pref.courseDetails] : []),
+                      ...courses
+                    ]
+                      // Deduplicate by ID
+                      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
                       .filter((course) => {
                         // Don't show courses already selected in other preferences
                         const isSelectedElsewhere = preferences.some(
@@ -137,6 +168,7 @@ const SetPreferences = () => {
                         </option>
                       ))}
                   </select>
+
                 </div>
                 <div className="w-32">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

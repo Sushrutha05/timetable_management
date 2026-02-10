@@ -162,10 +162,20 @@ export const timetableAPI = {
 // Faculty APIs
 export const facultyPreferenceAPI = {
   getPreferences: (facultyId) => fetchAPI(`/api/faculty/${facultyId}/preferences`),
+  getCoursesBySemester: (deptId, semester) => fetchAPI(`/api/faculty/courses/department/${deptId}/semester/${semester}`),
   setPreferences: (facultyId, data) => fetchAPI(`/api/faculty/${facultyId}/preferences`, {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getTimetable: (facultyId) => fetchAPI(`/api/faculty/${facultyId}/timetable`),
+  getTimetable: (facultyId) => fetchAPI(`/api/timetable/faculty/${facultyId}`),
 };
+
+// Auth APIs
+export const authAPI = {
+  login: (credentials) => fetchAPI('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  }),
+};
+
 
