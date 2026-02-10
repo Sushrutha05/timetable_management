@@ -55,6 +55,7 @@ com/timetable/timetable_api/dto/FacultyPreferenceRequest.class
 com/timetable/timetable_api/controller/CourseManagementController.class
 com/timetable/timetable_api/repository/SectionRepository.class
 com/timetable/timetable_api/model/Section.class
+com/timetable/timetable_api/dto/LoginRequest.class
 com/timetable/timetable_api/controller/FacultyPreferenceController.class
 com/timetable/timetable_api/dto/SectionCreationRequest.class
 com/timetable/timetable_api/service/CourseManagementService.class

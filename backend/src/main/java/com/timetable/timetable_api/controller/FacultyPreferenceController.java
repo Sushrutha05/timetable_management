@@ -22,6 +22,29 @@ public class FacultyPreferenceController {
     @Autowired
     private TimetableViewService timetableViewService;
 
+    @Autowired
+    private com.timetable.timetable_api.repository.DepartmentCourseRepository departmentCourseRepository;
+
+    /**
+     * Get courses for a specific department and semester to populate the preference
+     * dropdown.
+     * Endpoint: GET /api/faculty/courses/department/{deptId}/semester/{semester}
+     */
+    @GetMapping("/courses/department/{deptId}/semester/{semester}")
+    public ResponseEntity<List<com.timetable.timetable_api.model.Course>> getCoursesBySemester(
+            @PathVariable Integer deptId,
+            @PathVariable Integer semester) {
+
+        List<com.timetable.timetable_api.model.DepartmentCourse> deptCourses = departmentCourseRepository
+                .findByDepartmentIdAndSemester(deptId, semester);
+
+        List<com.timetable.timetable_api.model.Course> courses = deptCourses.stream()
+                .map(com.timetable.timetable_api.model.DepartmentCourse::getCourse)
+                .collect(java.util.stream.Collectors.toList());
+
+        return new ResponseEntity<>(courses, HttpStatus.OK);
+    }
+
     /**
      * Get all preferences for a specific faculty member.
      * Endpoint: GET /api/faculty/{facultyId}/preferences
@@ -37,7 +60,8 @@ public class FacultyPreferenceController {
      * Endpoint: POST /api/faculty/{facultyId}/preferences
      */
     @PostMapping("/{facultyId}/preferences")
-    public ResponseEntity<?> setPreferences(@PathVariable Long facultyId, @RequestBody FacultyPreferenceRequest request) {
+    public ResponseEntity<?> setPreferences(@PathVariable Long facultyId,
+            @RequestBody FacultyPreferenceRequest request) {
         try {
             List<FacultyPreference> savedPreferences = preferenceService.setPreferences(facultyId, request);
             return new ResponseEntity<>(savedPreferences, HttpStatus.CREATED);

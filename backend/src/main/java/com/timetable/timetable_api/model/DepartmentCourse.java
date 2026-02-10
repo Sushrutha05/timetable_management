@@ -23,13 +23,17 @@ public class DepartmentCourse {
     @JoinColumn(name = "course_id")
     private Course course;
 
+    @Column(name = "semester", nullable = false)
+    private Integer semester = 1;
+
     // --- Constructors ---
     public DepartmentCourse() {
     }
 
-    public DepartmentCourse(Department department, Course course) {
+    public DepartmentCourse(Department department, Course course, Integer semester) {
         this.department = department;
         this.course = course;
+        this.semester = semester;
         this.id = new DepartmentCourseId(department.getId(), course.getId());
     }
 
@@ -58,5 +62,13 @@ public class DepartmentCourse {
 
     public void setCourse(Course course) {
         this.course = course;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
     }
 }

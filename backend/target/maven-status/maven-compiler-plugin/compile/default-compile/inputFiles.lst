@@ -1,11 +1,13 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/TimetableApiApplication.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/config/SecurityConfig.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/AssignmentController.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/AuthController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/CourseManagementController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/CourseOfferingController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/DesignationController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/FacultyManagementController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/FacultyPreferenceController.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/FacultyTimetableController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/RoomManagementController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/SectionManagementController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/TimeSlotController.java
@@ -16,6 +18,9 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/DesignationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/FacultyCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/FacultyPreferenceRequest.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/FacultyTimetableEntry.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/LoginRequest.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/LoginResponse.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/RoomCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/SectionCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/TimeSlotRequest.java
