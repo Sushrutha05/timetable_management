@@ -7,6 +7,7 @@ com/timetable/timetable_api/dto/FacultyCreationRequest.class
 com/timetable/timetable_api/repository/RoomRepository.class
 com/timetable/timetable_api/service/FacultyPreferenceService.class
 com/timetable/timetable_api/controller/RoomManagementController.class
+com/timetable/timetable_api/model/TimetableMetadata.class
 com/timetable/timetable_api/model/DepartmentCourseId.class
 com/timetable/timetable_api/model/TimeSlot.class
 com/timetable/timetable_api/model/Course.class
@@ -40,6 +41,7 @@ com/timetable/timetable_api/model/Department.class
 com/timetable/timetable_api/model/DepartmentCourse.class
 com/timetable/timetable_api/controller/DesignationController.class
 com/timetable/timetable_api/service/TimetableAssignmentService.class
+com/timetable/timetable_api/repository/TimetableMetadataRepository.class
 com/timetable/timetable_api/dto/UpdateSlotRequest.class
 com/timetable/timetable_api/repository/DepartmentRepository.class
 com/timetable/timetable_api/repository/FacultyPreferenceRepository.class

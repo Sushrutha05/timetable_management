@@ -40,6 +40,7 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/model/ScheduledClass.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/model/Section.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/model/TimeSlot.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/model/TimetableMetadata.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/model/User.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/CourseOfferingRepository.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/CourseRepository.java
@@ -52,6 +53,7 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/ScheduledClassRepository.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/SectionRepository.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/TimeSlotRepository.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/TimetableMetadataRepository.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/repository/UserRepository.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/service/CourseManagementService.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/service/CourseOfferingService.java

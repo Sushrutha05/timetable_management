@@ -187,6 +187,16 @@ export const timetableAPI = {
     method: 'POST',
   }),
   getFull: () => fetchAPI('/api/admin/timetable'),
+  getStatus: () => fetchAPI('/api/admin/timetable/status'),
+  publish: () => fetchAPI('/api/admin/timetable/publish', {
+    method: 'POST',
+  }),
+  getForSection: (sectionId) => fetchAPI(`/api/admin/timetable/section/${sectionId}`),
+  getForFaculty: (facultyId) => fetchAPI(`/api/admin/timetable/faculty/${facultyId}`),
+  updateSlot: (data) => fetchAPI('/api/admin/timetable/update-slot', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };
 
 // Faculty APIs
