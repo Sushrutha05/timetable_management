@@ -29,6 +29,8 @@ const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout, deptId }) => {
 
   const renderPage = () => {
     switch (currentPage) {
+      case 'departments':
+        return <ManageDepartments />;
       case 'faculty':
         return <ManageFaculty deptId={deptId} />;
       case 'courses':
@@ -48,7 +50,7 @@ const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout, deptId }) => {
       case 'view':
         return <ViewTimetable />;
       default:
-        return <ManageFaculty deptId={deptId} />;
+        return <ManageDepartments />;
     }
   };
 
