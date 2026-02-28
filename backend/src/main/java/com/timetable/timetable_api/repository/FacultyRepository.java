@@ -9,4 +9,6 @@ public interface FacultyRepository extends JpaRepository<Faculty, Long> {
     Faculty findByUserId(Long userId);
 
     java.util.List<Faculty> findByDepartmentId(Integer departmentId);
+
+    long countByDepartmentId(Integer departmentId);
 }

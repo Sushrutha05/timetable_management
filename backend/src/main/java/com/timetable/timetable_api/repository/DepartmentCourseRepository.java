@@ -17,4 +17,6 @@ public interface DepartmentCourseRepository extends JpaRepository<DepartmentCour
 
     // Fetch by Department and Semester
     List<DepartmentCourse> findByDepartmentIdAndSemester(Integer departmentId, Integer semester);
+
+    long countByDepartmentId(Integer departmentId);
 }
