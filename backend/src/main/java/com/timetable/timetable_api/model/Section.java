@@ -21,7 +21,7 @@ public class Section {
     @Column(name = "semester", nullable = false)
     private Integer semester; // e.g., 3, 5, 7
 
-    @Column(name = "year", nullable = false)
+    @Column(name = "\"year\"", nullable = false)
     private Integer year; // e.g., 2025
 
     @Column(name = "student_count")

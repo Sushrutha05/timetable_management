@@ -23,6 +23,7 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/FacultyTimetableEntry.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/LoginRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/LoginResponse.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/PasswordResetRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/RoomCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/SectionCreationRequest.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/dto/TimeSlotRequest.java
