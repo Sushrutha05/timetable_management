@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Header from './Header';
+import ManageDepartments from './admin/ManageDepartments';
 import ManageFaculty from './admin/ManageFaculty';
 import ManageCourses from './admin/ManageCourses';
 import ManageRooms from './admin/ManageRooms';
@@ -11,9 +12,10 @@ import GenerateTimetable from './admin/GenerateTimetable';
 import ViewTimetable from './admin/ViewTimetable';
 
 const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout, deptId }) => {
-  const [currentPage, setCurrentPage] = useState('faculty');
+  const [currentPage, setCurrentPage] = useState('departments');
 
   const menuItems = [
+    { id: 'departments', label: 'Manage Departments' },
     { id: 'faculty', label: 'Manage Faculty' },
     { id: 'courses', label: 'Manage Courses' },
     { id: 'rooms', label: 'Manage Rooms' },
