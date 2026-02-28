@@ -13,7 +13,7 @@ public class TimetableMetadata {
     @Column(name = "\"key\"", unique = true, nullable = false)
     private String key;
 
-    @Column(name = "value", nullable = false)
+    @Column(name = "\"value\"", nullable = false)
     private String value;
 
     // Default constructor
