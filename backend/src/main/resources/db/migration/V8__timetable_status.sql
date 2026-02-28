@@ -1,6 +1,6 @@
 -- Create the timetable status table to track Publish state
 CREATE TABLE timetable_metadata (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     key VARCHAR(255) UNIQUE NOT NULL,
     value VARCHAR(255) NOT NULL
 );
