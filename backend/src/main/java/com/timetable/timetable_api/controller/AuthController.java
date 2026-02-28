@@ -65,8 +65,31 @@ public class AuthController {
                 facultyId,
                 deptId,
                 firstName,
-                lastName);
+                lastName,
+                user.getRequiresPasswordReset());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody com.timetable.timetable_api.dto.PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail());
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid user");
+        }
+
+        // Verify the old password matches the common default or whatever is currently
+        // set
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Incorrect current password.");
+        }
+
+        // Update to new password and set requiresReset to false
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setRequiresPasswordReset(false);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Password reset successfully.");
     }
 }
