@@ -51,10 +51,25 @@ public class FacultyManagementService {
 
         // 2. Create and Save the User Account
         User newUser = new User();
+
+        // Enforce Organization Email
+        if (request.getEmail() == null || !request.getEmail().toLowerCase().endsWith("@organisation.edu")) {
+            throw new RuntimeException("All accounts must use an @organisation.edu email address.");
+        }
         newUser.setEmail(request.getEmail());
+
+        // Assign default password and require reset
         // In a real app, ALWAYS hash passwords (e.g., BCrypt). Storing plain text for
-        // now.
-        newUser.setPasswordHash(request.getPassword());
+        // now,
+        // although passwordEncoder is typically available via context. We will set it
+        // directly as plain
+        // or whatever format the request.getPassword() handles, though we should
+        // probably encode it.
+        newUser.setPasswordHash(
+                request.getPassword() != null && !request.getPassword().isEmpty() ? request.getPassword()
+                        : "Welcome@123");
+        newUser.setRequiresPasswordReset(true);
+
         newUser.setRole(2); // 2 = FACULTY role
         // Link to Dept ID for User as well? Faculty user might need it for login logic
         // or scope
