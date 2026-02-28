@@ -206,6 +206,10 @@ export const authAPI = {
     method: 'POST',
     body: JSON.stringify(credentials),
   }),
+  resetPassword: (data) => fetchAPI('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };
 
 
