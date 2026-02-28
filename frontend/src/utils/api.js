@@ -168,6 +168,17 @@ export const offeringAPI = {
 // Admin APIs - Departments
 export const departmentAPI = {
   getAll: () => fetchAPI('/api/admin/department'),
+  create: (data) => fetchAPI('/api/admin/department', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id, data) => fetchAPI(`/api/admin/department/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id) => fetchAPI(`/api/admin/department/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 // Admin APIs - Timetable
