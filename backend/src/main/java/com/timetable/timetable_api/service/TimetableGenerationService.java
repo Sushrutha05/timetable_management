@@ -98,10 +98,20 @@ public class TimetableGenerationService {
                 if (c == null)
                     continue;
 
-                // 1. Schedule Practicals (Block of 2 or specific hours)
+                // 1. Schedule Practicals
                 int pHours = Optional.ofNullable(c.getPracticalHours()).orElse(0);
                 if (pHours > 0) {
-                    boolean scheduled = scheduleComponent(offering, "PRACTICAL", pHours, 2, allRooms, slotsByDay,
+                    // "For integrated courses the lab is two block, for skill enhancement and lab
+                    // only courses it is 3 hours block and 1 hour theory"
+                    int practicalBlockSize = 2; // Default for integrated
+                    String cType = courseType(c);
+                    if ("SKILL_ENHANCEMENT".equalsIgnoreCase(cType) || "LAB_ONLY".equalsIgnoreCase(cType)
+                            || "LAB".equalsIgnoreCase(cType)) {
+                        practicalBlockSize = 3;
+                    }
+
+                    boolean scheduled = scheduleComponent(offering, "PRACTICAL", pHours, practicalBlockSize, allRooms,
+                            slotsByDay,
                             occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException("Failed to schedule Practical for " + c.getCourseCode());
@@ -226,12 +236,14 @@ public class TimetableGenerationService {
         int firstIdx = daySlots.indexOf(firstSlot);
         int lastIdx = daySlots.indexOf(lastSlot);
 
+        // Check the slot immediately preceding the block
         if (firstIdx > 0) {
             TimeSlot prev = daySlots.get(firstIdx - 1);
             if (occupied.contains(key("FACULTY", fid, day, prev.getStartTime())))
                 return true;
         }
 
+        // Check the slot immediately following the block
         if (lastIdx >= 0 && lastIdx < daySlots.size() - 1) {
             TimeSlot next = daySlots.get(lastIdx + 1);
             if (occupied.contains(key("FACULTY", fid, day, next.getStartTime())))
