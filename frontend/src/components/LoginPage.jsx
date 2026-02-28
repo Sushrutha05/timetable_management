@@ -5,17 +5,16 @@ const LoginPage = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Mock login logic
-    if (email === 'admin@test.com') {
-      onLogin(1); // Admin role
-    } else if (email === 'faculty@test.com') {
-      onLogin(2); // Faculty role
-    } else {
-      setError('Invalid email. Use admin@test.com or faculty@test.com');
+    try {
+      const response = await import('../utils/api').then(module => module.authAPI.login({ email, password }));
+      onLogin(response);
+    } catch (err) {
+      setError('Invalid email or password');
+      console.error(err);
     }
   };
 

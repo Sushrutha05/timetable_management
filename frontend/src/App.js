@@ -8,9 +8,16 @@ function App() {
   const [userRole, setUserRole] = useState(null); // 1 = Admin, 2 = Faculty
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const handleLogin = (role) => {
+  const [facultyId, setFacultyId] = useState(null);
+  const [deptId, setDeptId] = useState(null);
+
+  const handleLogin = (data) => {
     setIsLoggedIn(true);
-    setUserRole(role);
+    setUserRole(data.role);
+    if (data.role === 2) {
+      setFacultyId(data.facultyId);
+      setDeptId(data.deptId);
+    }
   };
 
   const handleLogout = () => {
@@ -34,6 +41,7 @@ function App() {
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
         onLogout={handleLogout}
+        deptId={deptId}
       />
     );
   }
@@ -44,6 +52,8 @@ function App() {
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
         onLogout={handleLogout}
+        facultyId={facultyId}
+        deptId={deptId}
       />
     );
   }

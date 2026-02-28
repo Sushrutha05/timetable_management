@@ -40,13 +40,15 @@ public class FacultyManagementController {
             } else if (errorMessage != null && errorMessage.contains("unique")) {
                 errorMessage = "A record with this information already exists.";
             } else {
-                errorMessage = "Data integrity violation: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+                errorMessage = "Data integrity violation: "
+                        + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
             }
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", errorMessage);
             return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         } catch (RuntimeException e) {
-            // Handle business logic exceptions (e.g., Department not found, Designation not found)
+            // Handle business logic exceptions (e.g., Department not found, Designation not
+            // found)
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", e.getMessage());
             return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
@@ -74,13 +76,15 @@ public class FacultyManagementController {
             } else if (errorMessage != null && errorMessage.contains("unique")) {
                 errorMessage = "A record with this information already exists.";
             } else {
-                errorMessage = "Data integrity violation: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+                errorMessage = "Data integrity violation: "
+                        + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
             }
             return new ResponseEntity<>(Map.of("error", errorMessage), HttpStatus.BAD_REQUEST);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(Map.of("error", e.getMessage()), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            return new ResponseEntity<>(Map.of("error", "An error occurred while updating the faculty: " + e.getMessage()),
+            return new ResponseEntity<>(
+                    Map.of("error", "An error occurred while updating the faculty: " + e.getMessage()),
                     HttpStatus.BAD_REQUEST);
         }
     }
@@ -102,15 +106,20 @@ public class FacultyManagementController {
     /**
      * Bulk upload faculty via CSV.
      * Endpoint: POST /api/admin/faculty/upload
+     * Query Param: deptId (Required)
      */
     @PostMapping("/upload")
-    public ResponseEntity<?> bulkUploadFaculty(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> bulkUploadFaculty(@RequestParam("file") MultipartFile file,
+            @RequestParam("deptId") Integer deptId) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Uploaded file is empty."));
         }
+        if (deptId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Department ID is required."));
+        }
 
         try {
-            List<Faculty> createdFaculty = facultyService.bulkCreateFaculty(file.getInputStream());
+            List<Faculty> createdFaculty = facultyService.bulkCreateFaculty(file.getInputStream(), deptId);
             return new ResponseEntity<>(createdFaculty, HttpStatus.CREATED);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -122,12 +131,18 @@ public class FacultyManagementController {
     }
 
     /**
-     * Get all faculty members.
+     * Get all faculty members (optionally scoped by department).
      * Endpoint: GET /api/admin/faculty
+     * Query Param: deptId (Optional)
      */
     @GetMapping
-    public ResponseEntity<List<Faculty>> getAllFaculty() {
-        List<Faculty> facultyList = facultyService.getAllFaculty();
+    public ResponseEntity<List<Faculty>> getAllFaculty(@RequestParam(required = false) Integer deptId) {
+        List<Faculty> facultyList;
+        if (deptId != null) {
+            facultyList = facultyService.getFacultyByDepartment(deptId);
+        } else {
+            facultyList = facultyService.getAllFaculty();
+        }
         return new ResponseEntity<>(facultyList, HttpStatus.OK);
     }
 

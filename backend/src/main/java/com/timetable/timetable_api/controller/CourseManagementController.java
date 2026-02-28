@@ -27,10 +27,12 @@ public class CourseManagementController {
     @PostMapping
     public ResponseEntity<?> createCourse(@RequestBody CourseCreationRequest request) {
         try {
-            Course savedCourse = courseService.createCourse(request);
+            // Service returns DepartmentCourse
+            Object savedCourse = courseService.createCourse(request);
             return new ResponseEntity<>(savedCourse, HttpStatus.CREATED);
         } catch (Exception e) {
-            // This will catch database errors, like if you try to add a duplicate course_code
+            // This will catch database errors, like if you try to add a duplicate
+            // course_code
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
@@ -42,7 +44,8 @@ public class CourseManagementController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateCourse(@PathVariable Long id, @RequestBody CourseCreationRequest request) {
         try {
-            Course updatedCourse = courseService.updateCourse(id, request);
+            // Service returns DepartmentCourse
+            Object updatedCourse = courseService.updateCourse(id, request);
             return new ResponseEntity<>(updatedCourse, HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>("Error: " + e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -66,15 +69,21 @@ public class CourseManagementController {
     /**
      * Bulk upload courses via CSV.
      * Endpoint: POST /api/admin/course/upload
+     * Query Param: deptId (Required)
      */
     @PostMapping("/upload")
-    public ResponseEntity<?> bulkUploadCourses(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> bulkUploadCourses(@RequestParam("file") MultipartFile file,
+            @RequestParam("deptId") Integer deptId) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Uploaded file is empty."));
         }
+        if (deptId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Department ID is required."));
+        }
 
         try {
-            List<Course> createdCourses = courseService.bulkCreateCourses(file.getInputStream());
+            // Service returns List<DepartmentCourse>
+            List<?> createdCourses = courseService.bulkCreateCourses(file.getInputStream(), deptId);
             return new ResponseEntity<>(createdCourses, HttpStatus.CREATED);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -86,13 +95,20 @@ public class CourseManagementController {
     }
 
     /**
-     * Get all Courses.
+     * Get all Courses for a Department.
      * Endpoint: GET /api/admin/course
+     * Query Params: deptId (Required), semester (Optional)
      */
     @GetMapping
-    public ResponseEntity<List<Course>> getAllCourses() {
-        List<Course> courses = courseService.getAllCourses();
-        return new ResponseEntity<>(courses, HttpStatus.OK);
+    public ResponseEntity<?> getAllCourses(@RequestParam(required = false) Integer deptId,
+            @RequestParam(required = false) Integer semester) {
+        if (deptId != null) {
+            List<?> courses = courseService.getCoursesByDepartment(deptId, semester);
+            return new ResponseEntity<>(courses, HttpStatus.OK);
+        } else {
+            // Fallback to all courses (Legacy/SuperAdmin)
+            return new ResponseEntity<>(courseService.getAllCourses(), HttpStatus.OK);
+        }
     }
 
     /**

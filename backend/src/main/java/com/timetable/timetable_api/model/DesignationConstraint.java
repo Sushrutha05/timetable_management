@@ -16,6 +16,12 @@ public class DesignationConstraint {
     @Column(name = "max_lab_hours", nullable = false)
     private Integer maxLabHours;
 
+    @Column(name = "max_total_hours")
+    private Integer maxTotalHours = 20;
+
+    @Column(name = "priority_level")
+    private Integer priorityLevel = 0;
+
     // --- Getters and Setters ---
     // (Generate them here)
 
@@ -41,5 +47,21 @@ public class DesignationConstraint {
 
     public void setMaxLabHours(Integer maxLabHours) {
         this.maxLabHours = maxLabHours;
+    }
+
+    public Integer getMaxTotalHours() {
+        return maxTotalHours;
+    }
+
+    public void setMaxTotalHours(Integer maxTotalHours) {
+        this.maxTotalHours = maxTotalHours;
+    }
+
+    public Integer getPriorityLevel() {
+        return priorityLevel;
+    }
+
+    public void setPriorityLevel(Integer priorityLevel) {
+        this.priorityLevel = priorityLevel;
     }
 }

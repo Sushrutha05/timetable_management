@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository // Declares this as a Spring-managed repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    // That's it!
+    User findByEmail(String email);
 }

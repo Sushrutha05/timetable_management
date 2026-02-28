@@ -6,5 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FacultyRepository extends JpaRepository<Faculty, Long> {
-    // That's it!
+    Faculty findByUserId(Long userId);
+
+    java.util.List<Faculty> findByDepartmentId(Integer departmentId);
 }

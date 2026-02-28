@@ -18,8 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,9 +52,13 @@ public class FacultyManagementService {
         // 2. Create and Save the User Account
         User newUser = new User();
         newUser.setEmail(request.getEmail());
-        // In a real app, ALWAYS hash passwords (e.g., BCrypt). Storing plain text for now.
+        // In a real app, ALWAYS hash passwords (e.g., BCrypt). Storing plain text for
+        // now.
         newUser.setPasswordHash(request.getPassword());
         newUser.setRole(2); // 2 = FACULTY role
+        // Link to Dept ID for User as well? Faculty user might need it for login logic
+        // or scope
+        newUser.setDepartmentId(department.getId());
         User savedUser = userRepository.save(newUser);
 
         // 3. Create and Save the Faculty Profile
@@ -68,8 +70,7 @@ public class FacultyManagementService {
         newFaculty.setFirstName(request.getFirstName());
         newFaculty.setLastName(request.getLastName());
         newFaculty.setMiddleInitial(request.getMiddleInitial());
-        newFaculty.setDateOfJoining(request.getDateOfJoining());
-        newFaculty.setDateOfBirth(request.getDateOfBirth());
+        // Removed Date fields
 
         return facultyRepository.save(newFaculty);
     }
@@ -94,6 +95,8 @@ public class FacultyManagementService {
 
         linkedUser.setEmail(request.getEmail());
         linkedUser.setPasswordHash(request.getPassword());
+        // Update user dept too?
+        linkedUser.setDepartmentId(department.getId());
         userRepository.save(linkedUser);
 
         existing.setDepartment(department);
@@ -101,8 +104,7 @@ public class FacultyManagementService {
         existing.setFirstName(request.getFirstName());
         existing.setLastName(request.getLastName());
         existing.setMiddleInitial(request.getMiddleInitial());
-        existing.setDateOfJoining(request.getDateOfJoining());
-        existing.setDateOfBirth(request.getDateOfBirth());
+        // Removed Date fields
 
         return facultyRepository.save(existing);
     }
@@ -120,7 +122,7 @@ public class FacultyManagementService {
     /**
      * Bulk create faculty records from a CSV stream.
      */
-    public List<Faculty> bulkCreateFaculty(InputStream inputStream) {
+    public List<Faculty> bulkCreateFaculty(InputStream inputStream, Integer defaultDeptId) {
         List<Faculty> createdFaculty = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
@@ -142,6 +144,11 @@ public class FacultyManagementService {
 
                 String[] values = splitCsvLine(line);
                 FacultyCreationRequest request = buildRequestFromRow(values, headerIndex, rowNumber);
+
+                if (request.getDepartmentId() == null) {
+                    request.setDepartmentId(defaultDeptId);
+                }
+
                 createdFaculty.add(createFaculty(request));
             }
         } catch (IOException e) {
@@ -153,6 +160,10 @@ public class FacultyManagementService {
 
     public List<Faculty> getAllFaculty() {
         return facultyRepository.findAll();
+    }
+
+    public List<Faculty> getFacultyByDepartment(Integer deptId) {
+        return facultyRepository.findByDepartmentId(deptId);
     }
 
     public Faculty getFacultyById(Long id) {
@@ -169,12 +180,7 @@ public class FacultyManagementService {
         if (request.getFirstName() == null || request.getFirstName().trim().isEmpty()) {
             throw new RuntimeException("First name is required");
         }
-        if (request.getDateOfJoining() == null) {
-            throw new RuntimeException("Date of joining is required");
-        }
-        if (request.getDateOfBirth() == null) {
-            throw new RuntimeException("Date of birth is required");
-        }
+        // Removed Date validations
         if (request.getDepartmentId() == null) {
             throw new RuntimeException("Department ID is required");
         }
@@ -207,8 +213,9 @@ public class FacultyManagementService {
     }
 
     private void validateRequiredHeaders(Map<String, Integer> headerIndex) {
+        // Removed dateofjoining, dateofbirth
         List<String> requiredHeaders = List.of("email", "password", "firstname", "lastname",
-                "dateofjoining", "dateofbirth", "designation", "departmentid");
+                "designation"); // Department ID might be from context or CSV
         for (String header : requiredHeaders) {
             if (!headerIndex.containsKey(header)) {
                 throw new RuntimeException("Missing required CSV header: " + header);
@@ -216,23 +223,27 @@ public class FacultyManagementService {
         }
     }
 
-    private FacultyCreationRequest buildRequestFromRow(String[] values, Map<String, Integer> headerIndex, int rowNumber) {
+    private FacultyCreationRequest buildRequestFromRow(String[] values, Map<String, Integer> headerIndex,
+            int rowNumber) {
         try {
             FacultyCreationRequest request = new FacultyCreationRequest();
             request.setEmail(getValue(values, headerIndex, "email"));
             request.setPassword(getValue(values, headerIndex, "password"));
             request.setFirstName(getValue(values, headerIndex, "firstname"));
             request.setLastName(getValue(values, headerIndex, "lastname"));
-            request.setDateOfJoining(LocalDate.parse(getValue(values, headerIndex, "dateofjoining")));
-            request.setDateOfBirth(LocalDate.parse(getValue(values, headerIndex, "dateofbirth")));
+            // Removed Dates
             request.setDesignation(getValue(values, headerIndex, "designation"));
-            request.setDepartmentId(Integer.parseInt(getValue(values, headerIndex, "departmentid")));
+
+            if (headerIndex.containsKey("departmentid")) {
+                request.setDepartmentId(Integer.parseInt(getValue(values, headerIndex, "departmentid")));
+            }
+
             // Optional column
             if (headerIndex.containsKey("middleinitial")) {
                 request.setMiddleInitial(getValue(values, headerIndex, "middleinitial"));
             }
             return request;
-        } catch (NumberFormatException | DateTimeParseException ex) {
+        } catch (NumberFormatException ex) {
             throw new RuntimeException("Invalid data format on row " + rowNumber + ": " + ex.getMessage(), ex);
         }
     }

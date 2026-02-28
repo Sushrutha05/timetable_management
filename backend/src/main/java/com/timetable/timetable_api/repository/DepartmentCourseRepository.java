@@ -14,4 +14,7 @@ public interface DepartmentCourseRepository extends JpaRepository<DepartmentCour
 
     // Convenience traversal via relation to fetch by Department.id
     List<DepartmentCourse> findByDepartmentId(Integer departmentId);
+
+    // Fetch by Department and Semester
+    List<DepartmentCourse> findByDepartmentIdAndSemester(Integer departmentId, Integer semester);
 }

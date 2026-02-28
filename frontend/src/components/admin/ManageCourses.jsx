@@ -2,37 +2,47 @@ import React, { useState, useEffect, useRef } from 'react';
 import { courseAPI } from '../../utils/api';
 import courseTemplate from '../common/course_template.csv';
 
-const ManageCourses = () => {
+const ManageCourses = ({ deptId }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [bulkMessage, setBulkMessage] = useState({ type: '', text: '' });
   const [showForm, setShowForm] = useState(false);
+
+  // Semester filter for list
+  const [semesterFilter, setSemesterFilter] = useState('');
+
   const [formData, setFormData] = useState({
     courseCode: '',
     courseName: '',
     creditHours: '',
+    semester: '1', // Default semester
   });
+
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkUploading, setBulkUploading] = useState(false);
   const fileInputRef = useRef(null);
+
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({
     courseCode: '',
     courseName: '',
     creditHours: '',
+    semester: '1',
   });
+
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     loadCourses();
-  }, []);
+  }, [deptId, semesterFilter]);
 
   const loadCourses = async () => {
     setLoading(true);
     try {
-      const data = await courseAPI.getAll();
+      // Pass deptId and semester filter
+      const data = await courseAPI.getAll(deptId, semesterFilter || null);
       setCourses(data);
       setMessage({ type: '', text: '' });
     } catch (error) {
@@ -51,11 +61,14 @@ const ManageCourses = () => {
       const payload = {
         ...formData,
         creditHours: parseInt(formData.creditHours),
+        semester: parseInt(formData.semester),
+        departmentId: deptId,
       };
+
       await courseAPI.create(payload);
       setMessage({ type: 'success', text: 'Course created successfully!' });
       setShowForm(false);
-      setFormData({ courseCode: '', courseName: '', creditHours: '' });
+      setFormData({ courseCode: '', courseName: '', creditHours: '', semester: '1' });
       loadCourses();
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
@@ -72,13 +85,19 @@ const ManageCourses = () => {
       return;
     }
 
+    if (!deptId) {
+      setBulkMessage({ type: 'error', text: 'Department context is missing.' });
+      return;
+    }
+
     setBulkUploading(true);
     setBulkMessage({ type: '', text: '' });
 
     try {
       const formDataUpload = new FormData();
       formDataUpload.append('file', bulkFile);
-      const result = await courseAPI.bulkUpload(formDataUpload);
+      // deptId passed as second arg
+      const result = await courseAPI.bulkUpload(formDataUpload, deptId);
       const count = Array.isArray(result) ? result.length : 0;
       setBulkMessage({
         type: 'success',
@@ -97,19 +116,27 @@ const ManageCourses = () => {
   };
 
   // ---- Edit/Delete Handlers ----
-  const startEdit = (course) => {
-    setEditingId(course.id);
+  const startEdit = (item) => {
+    // If deptId is present, item is likely DepartmentCourse (wrapper)
+    // If deptId is null (super admin?), item might be Course
+    // We need to normalize
+    const course = item.course || item;
+    const semester = item.semester || 1;
+    const courseId = course.id;
+
+    setEditingId(courseId);
     setEditData({
       courseCode: course.courseCode || '',
       courseName: course.courseName || '',
       creditHours: String(course.creditHours ?? ''),
+      semester: String(semester),
     });
     setMessage({ type: '', text: '' });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditData({ courseCode: '', courseName: '', creditHours: '' });
+    setEditData({ courseCode: '', courseName: '', creditHours: '', semester: '1' });
   };
 
   const handleEditChange = (field, value) => {
@@ -123,6 +150,8 @@ const ManageCourses = () => {
       const payload = {
         ...editData,
         creditHours: parseInt(editData.creditHours),
+        semester: parseInt(editData.semester),
+        departmentId: deptId,
       };
       await courseAPI.update(editingId, payload);
       setSaving(false);
@@ -135,7 +164,8 @@ const ManageCourses = () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (item) => {
+    const id = item.course ? item.course.id : item.id;
     if (!window.confirm('Delete this course?')) return;
     setDeletingId(id);
     try {
@@ -148,25 +178,61 @@ const ManageCourses = () => {
     }
   };
 
+  // Helper to extract display data
+  const getDisplayData = (item) => {
+    if (item.course) {
+      // It's a DepartmentCourse
+      return {
+        id: item.course.id,
+        courseCode: item.course.courseCode,
+        courseName: item.course.courseName,
+        creditHours: item.course.creditHours,
+        semester: item.semester,
+      };
+    } else {
+      // It's a raw Course (Legacy/SuperAdmin)
+      return {
+        id: item.id,
+        courseCode: item.courseCode,
+        courseName: item.courseName,
+        creditHours: item.creditHours,
+        semester: '-', // Not available in legacy view
+      };
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Manage Courses</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-        >
-          {showForm ? 'Cancel' : 'Add New Course'}
-        </button>
+        <div className="flex gap-4">
+          {/* Semester Filter */}
+          <select
+            value={semesterFilter}
+            onChange={(e) => setSemesterFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+          >
+            <option value="">All Semesters</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+              <option key={sem} value={sem}>Semester {sem}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            {showForm ? 'Cancel' : 'Add New Course'}
+          </button>
+        </div>
       </div>
 
       {message.text && (
         <div
-          className={`mb-4 p-3 rounded-md ${
-            message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-          }`}
+          className={`mb-4 p-3 rounded-md ${message.type === 'success'
+            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+            : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+            }`}
         >
           {message.text}
         </div>
@@ -176,7 +242,7 @@ const ManageCourses = () => {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Create New Course</h3>
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Course Code <span className="text-red-500">*</span>
@@ -189,7 +255,7 @@ const ManageCourses = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div>
+              <div className="mt-4 lg:mt-0 col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Course Name <span className="text-red-500">*</span>
                 </label>
@@ -201,7 +267,7 @@ const ManageCourses = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div>
+              <div className="mt-4 lg:mt-0">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Credit Hours <span className="text-red-500">*</span>
                 </label>
@@ -213,6 +279,21 @@ const ManageCourses = () => {
                   onChange={(e) => setFormData({ ...formData, creditHours: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
+              </div>
+              <div className="mt-4 lg:mt-0">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Semester <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.semester}
+                  onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                    <option key={sem} value={sem}>{sem}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <button
@@ -226,19 +307,19 @@ const ManageCourses = () => {
         </div>
       )}
 
+      {/* Bulk Upload Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Bulk Import Courses via CSV</h3>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-            Upload a CSV file with the required headers to add multiple courses simultaneously.
+            Upload a CSV file with the required headers.
           </p>
           {bulkMessage.text && (
             <div
-              className={`mb-4 p-3 rounded-md ${
-                bulkMessage.type === 'success'
-                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                  : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-              }`}
+              className={`mb-4 p-3 rounded-md ${bulkMessage.type === 'success'
+                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                }`}
             >
               {bulkMessage.text}
             </div>
@@ -262,9 +343,9 @@ const ManageCourses = () => {
                   download="course_template.csv"
                   className="text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  Download sample CSV template
+                  Download template
                 </a>
-                <span>Headers: courseCode, courseName, creditHours</span>
+                <span>Headers: courseCode, courseName, creditHours, semester (optional)</span>
               </div>
               <button
                 type="submit"
@@ -282,7 +363,7 @@ const ManageCourses = () => {
             <li>Include the header row exactly as shown.</li>
             <li>`creditHours` must be a whole number.</li>
             <li>Course codes must be unique.</li>
-            <li>Use UTF-8 encoding to avoid parsing issues.</li>
+            <li>Semester will be set to default (1) or handled by backend logic if column missing.</li>
           </ul>
         </div>
       </div>
@@ -291,7 +372,7 @@ const ManageCourses = () => {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Course</h3>
           <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Code</label>
                 <input
@@ -302,7 +383,7 @@ const ManageCourses = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div>
+              <div className="mt-4 lg:mt-0 col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Name</label>
                 <input
                   type="text"
@@ -312,7 +393,7 @@ const ManageCourses = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div>
+              <div className="mt-4 lg:mt-0">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours</label>
                 <input
                   type="number"
@@ -322,6 +403,19 @@ const ManageCourses = () => {
                   onChange={(e) => handleEditChange('creditHours', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
+              </div>
+              <div className="mt-4 lg:mt-0">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Semester</label>
+                <select
+                  required
+                  value={editData.semester}
+                  onChange={(e) => handleEditChange('semester', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                    <option key={sem} value={sem}>{sem}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="mt-4 flex gap-3">
@@ -358,6 +452,7 @@ const ManageCourses = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course Code</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Sem</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Credit Hours</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
@@ -365,36 +460,40 @@ const ManageCourses = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {courses.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
                       No courses found
                     </td>
                   </tr>
                 ) : (
-                  courses.map((course) => (
-                    <tr key={course.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{course.id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{course.courseCode}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{course.courseName}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{course.creditHours}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => startEdit(course)}
-                            className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(course.id)}
-                            disabled={deletingId === course.id}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-60"
-                          >
-                            {deletingId === course.id ? 'Deleting...' : 'Delete'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  courses.map((item) => {
+                    const data = getDisplayData(item);
+                    return (
+                      <tr key={data.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.courseCode}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.courseName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.semester}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.creditHours}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEdit(item)}
+                              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item)}
+                              disabled={deletingId === data.id}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-60"
+                            >
+                              {deletingId === data.id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

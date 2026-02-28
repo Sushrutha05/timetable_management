@@ -10,7 +10,7 @@ import ManageOfferings from './admin/ManageOfferings';
 import GenerateTimetable from './admin/GenerateTimetable';
 import ViewTimetable from './admin/ViewTimetable';
 
-const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
+const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout, deptId }) => {
   const [currentPage, setCurrentPage] = useState('faculty');
 
   const menuItems = [
@@ -28,9 +28,9 @@ const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
   const renderPage = () => {
     switch (currentPage) {
       case 'faculty':
-        return <ManageFaculty />;
+        return <ManageFaculty deptId={deptId} />;
       case 'courses':
-        return <ManageCourses />;
+        return <ManageCourses deptId={deptId} />;
       case 'rooms':
         return <ManageRooms />;
       case 'sections':
@@ -46,7 +46,7 @@ const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
       case 'view':
         return <ViewTimetable />;
       default:
-        return <ManageFaculty />;
+        return <ManageFaculty deptId={deptId} />;
     }
   };
 
@@ -62,11 +62,10 @@ const AdminDashboard = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                 <li key={item.id}>
                   <button
                     onClick={() => setCurrentPage(item.id)}
-                    className={`w-full text-left px-4 py-2 rounded-md transition-colors ${
-                      currentPage === item.id
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
+                    className={`w-full text-left px-4 py-2 rounded-md transition-colors ${currentPage === item.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
                   >
                     {item.label}
                   </button>

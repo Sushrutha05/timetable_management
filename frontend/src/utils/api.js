@@ -28,7 +28,11 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Admin APIs - Faculty
 export const facultyAPI = {
-  getAll: () => fetchAPI('/api/admin/faculty'),
+  getAll: (deptId) => {
+    const params = new URLSearchParams();
+    if (deptId) params.append('deptId', deptId);
+    return fetchAPI(`/api/admin/faculty?${params.toString()}`);
+  },
   getById: (id) => fetchAPI(`/api/admin/faculty/${id}`),
   create: (data) => fetchAPI('/api/admin/faculty', {
     method: 'POST',
@@ -41,15 +45,22 @@ export const facultyAPI = {
   delete: (id) => fetchAPI(`/api/admin/faculty/${id}`, {
     method: 'DELETE',
   }),
-  bulkUpload: (formData) => fetchAPI('/api/admin/faculty/upload', {
-    method: 'POST',
-    body: formData,
-  }),
+  bulkUpload: (formData, deptId) => {
+    return fetchAPI(`/api/admin/faculty/upload?deptId=${deptId}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 // Admin APIs - Courses
 export const courseAPI = {
-  getAll: () => fetchAPI('/api/admin/course'),
+  getAll: (deptId, semester) => {
+    const params = new URLSearchParams();
+    if (deptId) params.append('deptId', deptId);
+    if (semester) params.append('semester', semester);
+    return fetchAPI(`/api/admin/course?${params.toString()}`);
+  },
   getById: (id) => fetchAPI(`/api/admin/course/${id}`),
   create: (data) => fetchAPI('/api/admin/course', {
     method: 'POST',
@@ -62,10 +73,13 @@ export const courseAPI = {
   delete: (id) => fetchAPI(`/api/admin/course/${id}`, {
     method: 'DELETE',
   }),
-  bulkUpload: (formData) => fetchAPI('/api/admin/course/upload', {
-    method: 'POST',
-    body: formData,
-  }),
+  bulkUpload: (formData, deptId) => {
+    // Append deptId to URL or FormData? Controller expects Query Param.
+    return fetchAPI(`/api/admin/course/upload?deptId=${deptId}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 // Admin APIs - Rooms
@@ -151,6 +165,11 @@ export const offeringAPI = {
   }),
 };
 
+// Admin APIs - Departments
+export const departmentAPI = {
+  getAll: () => fetchAPI('/api/admin/department'),
+};
+
 // Admin APIs - Timetable
 export const timetableAPI = {
   generate: () => fetchAPI('/api/admin/timetable/generate', {
@@ -162,10 +181,20 @@ export const timetableAPI = {
 // Faculty APIs
 export const facultyPreferenceAPI = {
   getPreferences: (facultyId) => fetchAPI(`/api/faculty/${facultyId}/preferences`),
+  getCoursesBySemester: (deptId, semester) => fetchAPI(`/api/faculty/courses/department/${deptId}/semester/${semester}`),
   setPreferences: (facultyId, data) => fetchAPI(`/api/faculty/${facultyId}/preferences`, {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getTimetable: (facultyId) => fetchAPI(`/api/faculty/${facultyId}/timetable`),
+  getTimetable: (facultyId) => fetchAPI(`/api/timetable/faculty/${facultyId}`),
 };
+
+// Auth APIs
+export const authAPI = {
+  login: (credentials) => fetchAPI('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  }),
+};
+
 
