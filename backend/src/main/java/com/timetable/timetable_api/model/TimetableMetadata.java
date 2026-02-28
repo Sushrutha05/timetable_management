@@ -10,7 +10,7 @@ public class TimetableMetadata {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "key", unique = true, nullable = false)
+    @Column(name = "\"key\"", unique = true, nullable = false)
     private String key;
 
     @Column(name = "value", nullable = false)
