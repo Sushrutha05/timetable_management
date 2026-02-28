@@ -25,6 +25,9 @@ public class User {
                                     // though strictly needed for Department Admin)
     private Integer departmentId;
 
+    @Column(name = "requires_password_reset", nullable = false)
+    private Boolean requiresPasswordReset = true;
+
     // --- Getters and Setters ---
     // You need to add getters and setters for all fields so Spring can access them.
     // Your IDE can generate these for you (Right-click -> Generate -> Getters and
@@ -68,5 +71,13 @@ public class User {
 
     public void setDepartmentId(Integer departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public Boolean getRequiresPasswordReset() {
+        return requiresPasswordReset;
+    }
+
+    public void setRequiresPasswordReset(Boolean requiresPasswordReset) {
+        this.requiresPasswordReset = requiresPasswordReset;
     }
 }
