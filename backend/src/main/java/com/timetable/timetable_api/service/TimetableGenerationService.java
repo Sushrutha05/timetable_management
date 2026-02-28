@@ -27,6 +27,9 @@ public class TimetableGenerationService {
     @Autowired
     private ScheduledClassRepository scheduledClassRepository;
 
+    @Autowired
+    private TimetableMetadataRepository metadataRepository;
+
     /**
      * Advanced deterministic timetable generation with strict constraints.
      * Phases:
@@ -40,6 +43,12 @@ public class TimetableGenerationService {
     public List<ScheduledClass> generateTimetable() {
         // Phase A: Setup and data initialization
         scheduledClassRepository.deleteAll();
+
+        // Ensure timetable is switched to DRAFT mode natively upon modifying structure
+        TimetableMetadata status = metadataRepository.findByKey("STATUS")
+                .orElse(new TimetableMetadata("STATUS", "DRAFT"));
+        status.setValue("DRAFT");
+        metadataRepository.save(status);
 
         List<CourseOffering> allOfferings = offeringRepository.findAll();
         if (allOfferings.isEmpty()) {

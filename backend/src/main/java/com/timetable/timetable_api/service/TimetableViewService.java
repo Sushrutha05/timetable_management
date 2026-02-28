@@ -27,4 +27,11 @@ public class TimetableViewService {
         // This requires a custom method in our repository
         return scheduledClassRepository.findByCourseOffering_Faculty_Id(facultyId);
     }
+
+    /**
+     * Gets only the classes for a specific section. (For Admin Section View)
+     */
+    public List<ScheduledClass> getTimetableForSection(Long sectionId) {
+        return scheduledClassRepository.findByCourseOffering_Section_Id(sectionId);
+    }
 }

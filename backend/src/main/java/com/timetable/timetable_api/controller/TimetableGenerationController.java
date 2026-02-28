@@ -31,6 +31,9 @@ public class TimetableGenerationController {
     @Autowired
     private TimetableReportService timetableReportService;
 
+    @Autowired
+    private com.timetable.timetable_api.repository.TimetableMetadataRepository metadataRepository;
+
     /**
      * Generate the master timetable.
      * This will clear the old schedule and create a new one.
@@ -47,12 +50,52 @@ public class TimetableGenerationController {
     }
 
     /**
+     * Get the current timetable publish status
+     */
+    @GetMapping("/status")
+    public ResponseEntity<?> getTimetableStatus() {
+        return metadataRepository.findByKey("STATUS")
+                .map(m -> new ResponseEntity<>(m.getValue(), HttpStatus.OK))
+                .orElse(new ResponseEntity<>("DRAFT", HttpStatus.OK));
+    }
+
+    /**
+     * Publish the timetable
+     */
+    @PostMapping("/publish")
+    public ResponseEntity<?> publishTimetable() {
+        com.timetable.timetable_api.model.TimetableMetadata status = metadataRepository.findByKey("STATUS")
+                .orElse(new com.timetable.timetable_api.model.TimetableMetadata("STATUS", "DRAFT"));
+        status.setValue("PUBLISHED");
+        metadataRepository.save(status);
+        return ResponseEntity.ok("Timetable published successfully.");
+    }
+
+    /**
      * Get the full timetable.
      * Endpoint: GET /api/admin/timetable
      */
     @GetMapping
     public ResponseEntity<List<ScheduledClass>> getFullTimetable() {
         List<ScheduledClass> timetable = timetableViewService.getFullTimetable();
+        return new ResponseEntity<>(timetable, HttpStatus.OK);
+    }
+
+    /**
+     * Get Timetable for a specific Section
+     */
+    @GetMapping("/section/{sectionId}")
+    public ResponseEntity<List<ScheduledClass>> getTimetableForSection(@PathVariable Long sectionId) {
+        List<ScheduledClass> timetable = timetableViewService.getTimetableForSection(sectionId);
+        return new ResponseEntity<>(timetable, HttpStatus.OK);
+    }
+
+    /**
+     * Get Timetable for a specific Faculty
+     */
+    @GetMapping("/faculty/{facultyId}")
+    public ResponseEntity<List<ScheduledClass>> getTimetableForFaculty(@PathVariable Long facultyId) {
+        List<ScheduledClass> timetable = timetableViewService.getTimetableForFaculty(facultyId);
         return new ResponseEntity<>(timetable, HttpStatus.OK);
     }
 
