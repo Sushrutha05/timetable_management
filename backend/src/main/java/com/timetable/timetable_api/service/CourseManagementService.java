@@ -54,6 +54,9 @@ public class CourseManagementService {
         newCourse.setCourseName(request.getCourseName());
         newCourse.setCreditHours(request.getCreditHours());
         newCourse.setCourseType(request.getCourseType());
+        newCourse.setLectureHours(request.getLectureHours() != null ? request.getLectureHours() : 0);
+        newCourse.setTutorialHours(request.getTutorialHours() != null ? request.getTutorialHours() : 0);
+        newCourse.setPracticalHours(request.getPracticalHours() != null ? request.getPracticalHours() : 0);
 
         Course savedCourse = courseRepository.save(newCourse);
 
@@ -87,6 +90,12 @@ public class CourseManagementService {
         existingCourse.setCourseName(request.getCourseName());
         existingCourse.setCreditHours(request.getCreditHours());
         existingCourse.setCourseType(request.getCourseType());
+        if (request.getLectureHours() != null)
+            existingCourse.setLectureHours(request.getLectureHours());
+        if (request.getTutorialHours() != null)
+            existingCourse.setTutorialHours(request.getTutorialHours());
+        if (request.getPracticalHours() != null)
+            existingCourse.setPracticalHours(request.getPracticalHours());
         courseRepository.save(existingCourse);
 
         // Update Semester if DepartmentId is provided to identify the link

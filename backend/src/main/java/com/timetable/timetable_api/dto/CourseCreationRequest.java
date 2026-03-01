@@ -6,8 +6,11 @@ public class CourseCreationRequest {
     private String courseName;
     private Integer creditHours;
     private String courseType;
-    private Integer semester; // Added for V6
-    private Integer departmentId; // Added for V6 Scoping
+    private Integer semester;
+    private Integer departmentId;
+    private Integer lectureHours;
+    private Integer tutorialHours;
+    private Integer practicalHours;
 
     // --- Getters and Setters ---
     // (You can generate these in your IDE)
@@ -58,5 +61,29 @@ public class CourseCreationRequest {
 
     public void setDepartmentId(Integer departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public Integer getLectureHours() {
+        return lectureHours;
+    }
+
+    public void setLectureHours(Integer lectureHours) {
+        this.lectureHours = lectureHours;
+    }
+
+    public Integer getTutorialHours() {
+        return tutorialHours;
+    }
+
+    public void setTutorialHours(Integer tutorialHours) {
+        this.tutorialHours = tutorialHours;
+    }
+
+    public Integer getPracticalHours() {
+        return practicalHours;
+    }
+
+    public void setPracticalHours(Integer practicalHours) {
+        this.practicalHours = practicalHours;
     }
 }

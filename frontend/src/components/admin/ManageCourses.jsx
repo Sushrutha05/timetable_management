@@ -16,7 +16,11 @@ const ManageCourses = ({ deptId }) => {
     courseCode: '',
     courseName: '',
     creditHours: '',
-    semester: '1', // Default semester
+    semester: '1',
+    courseType: 'THEORY',
+    lectureHours: '',
+    tutorialHours: '',
+    practicalHours: '',
   });
 
   const [bulkFile, setBulkFile] = useState(null);
@@ -29,6 +33,10 @@ const ManageCourses = ({ deptId }) => {
     courseName: '',
     creditHours: '',
     semester: '1',
+    courseType: 'THEORY',
+    lectureHours: '',
+    tutorialHours: '',
+    practicalHours: '',
   });
 
   const [saving, setSaving] = useState(false);
@@ -62,13 +70,16 @@ const ManageCourses = ({ deptId }) => {
         ...formData,
         creditHours: parseInt(formData.creditHours),
         semester: parseInt(formData.semester),
+        lectureHours: formData.lectureHours !== '' ? parseInt(formData.lectureHours) : 0,
+        tutorialHours: formData.tutorialHours !== '' ? parseInt(formData.tutorialHours) : 0,
+        practicalHours: formData.practicalHours !== '' ? parseInt(formData.practicalHours) : 0,
         departmentId: deptId,
       };
 
       await courseAPI.create(payload);
       setMessage({ type: 'success', text: 'Course created successfully!' });
       setShowForm(false);
-      setFormData({ courseCode: '', courseName: '', creditHours: '', semester: '1' });
+      setFormData({ courseCode: '', courseName: '', creditHours: '', semester: '1', courseType: 'THEORY', lectureHours: '', tutorialHours: '', practicalHours: '' });
       loadCourses();
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
@@ -117,9 +128,6 @@ const ManageCourses = ({ deptId }) => {
 
   // ---- Edit/Delete Handlers ----
   const startEdit = (item) => {
-    // If deptId is present, item is likely DepartmentCourse (wrapper)
-    // If deptId is null (super admin?), item might be Course
-    // We need to normalize
     const course = item.course || item;
     const semester = item.semester || 1;
     const courseId = course.id;
@@ -130,13 +138,17 @@ const ManageCourses = ({ deptId }) => {
       courseName: course.courseName || '',
       creditHours: String(course.creditHours ?? ''),
       semester: String(semester),
+      courseType: course.courseType || 'THEORY',
+      lectureHours: String(course.lectureHours ?? ''),
+      tutorialHours: String(course.tutorialHours ?? ''),
+      practicalHours: String(course.practicalHours ?? ''),
     });
     setMessage({ type: '', text: '' });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditData({ courseCode: '', courseName: '', creditHours: '', semester: '1' });
+    setEditData({ courseCode: '', courseName: '', creditHours: '', semester: '1', courseType: 'THEORY', lectureHours: '', tutorialHours: '', practicalHours: '' });
   };
 
   const handleEditChange = (field, value) => {
@@ -151,6 +163,9 @@ const ManageCourses = ({ deptId }) => {
         ...editData,
         creditHours: parseInt(editData.creditHours),
         semester: parseInt(editData.semester),
+        lectureHours: editData.lectureHours !== '' ? parseInt(editData.lectureHours) : 0,
+        tutorialHours: editData.tutorialHours !== '' ? parseInt(editData.tutorialHours) : 0,
+        practicalHours: editData.practicalHours !== '' ? parseInt(editData.practicalHours) : 0,
         departmentId: deptId,
       };
       await courseAPI.update(editingId, payload);
@@ -181,22 +196,28 @@ const ManageCourses = ({ deptId }) => {
   // Helper to extract display data
   const getDisplayData = (item) => {
     if (item.course) {
-      // It's a DepartmentCourse
       return {
         id: item.course.id,
         courseCode: item.course.courseCode,
         courseName: item.course.courseName,
         creditHours: item.course.creditHours,
+        courseType: item.course.courseType || '-',
+        lectureHours: item.course.lectureHours ?? 0,
+        tutorialHours: item.course.tutorialHours ?? 0,
+        practicalHours: item.course.practicalHours ?? 0,
         semester: item.semester,
       };
     } else {
-      // It's a raw Course (Legacy/SuperAdmin)
       return {
         id: item.id,
         courseCode: item.courseCode,
         courseName: item.courseName,
         creditHours: item.creditHours,
-        semester: '-', // Not available in legacy view
+        courseType: item.courseType || '-',
+        lectureHours: item.lectureHours ?? 0,
+        tutorialHours: item.tutorialHours ?? 0,
+        practicalHours: item.practicalHours ?? 0,
+        semester: '-',
       };
     }
   };
@@ -248,45 +269,26 @@ const ManageCourses = ({ deptId }) => {
                   Course Code <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="text"
-                  required
-                  value={formData.courseCode}
+                  type="text" required value={formData.courseCode}
                   onChange={(e) => setFormData({ ...formData, courseCode: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div className="mt-4 lg:mt-0 col-span-2">
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Course Name <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="text"
-                  required
-                  value={formData.courseName}
+                  type="text" required value={formData.courseName}
                   onChange={(e) => setFormData({ ...formData, courseName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div className="mt-4 lg:mt-0">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Credit Hours <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={formData.creditHours}
-                  onChange={(e) => setFormData({ ...formData, creditHours: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div className="mt-4 lg:mt-0">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Semester <span className="text-red-500">*</span>
                 </label>
-                <select
-                  required
-                  value={formData.semester}
+                <select required value={formData.semester}
                   onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 >
@@ -294,6 +296,47 @@ const ManageCourses = ({ deptId }) => {
                     <option key={sem} value={sem}>{sem}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Course Type <span className="text-red-500">*</span>
+                </label>
+                <select required value={formData.courseType}
+                  onChange={(e) => setFormData({ ...formData, courseType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="THEORY">Theory</option>
+                  <option value="LAB">Lab</option>
+                  <option value="TUTORIAL">Tutorial</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours <span className="text-red-500">*</span></label>
+                <input type="number" required min="1" value={formData.creditHours}
+                  onChange={(e) => setFormData({ ...formData, creditHours: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lecture Hrs (L)</label>
+                <input type="number" min="0" value={formData.lectureHours}
+                  onChange={(e) => setFormData({ ...formData, lectureHours: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tutorial Hrs (T)</label>
+                <input type="number" min="0" value={formData.tutorialHours}
+                  onChange={(e) => setFormData({ ...formData, tutorialHours: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Practical Hrs (P)</label>
+                <input type="number" min="0" value={formData.practicalHours}
+                  onChange={(e) => setFormData({ ...formData, practicalHours: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
               </div>
             </div>
             <button
@@ -375,40 +418,21 @@ const ManageCourses = ({ deptId }) => {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Code</label>
-                <input
-                  type="text"
-                  required
-                  value={editData.courseCode}
+                <input type="text" required value={editData.courseCode}
                   onChange={(e) => handleEditChange('courseCode', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div className="mt-4 lg:mt-0 col-span-2">
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editData.courseName}
+                <input type="text" required value={editData.courseName}
                   onChange={(e) => handleEditChange('courseName', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div className="mt-4 lg:mt-0">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={editData.creditHours}
-                  onChange={(e) => handleEditChange('creditHours', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div className="mt-4 lg:mt-0">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Semester</label>
-                <select
-                  required
-                  value={editData.semester}
+                <select required value={editData.semester}
                   onChange={(e) => handleEditChange('semester', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 >
@@ -417,20 +441,53 @@ const ManageCourses = ({ deptId }) => {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Type</label>
+                <select required value={editData.courseType}
+                  onChange={(e) => handleEditChange('courseType', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="THEORY">Theory</option>
+                  <option value="LAB">Lab</option>
+                  <option value="TUTORIAL">Tutorial</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours</label>
+                <input type="number" required min="1" value={editData.creditHours}
+                  onChange={(e) => handleEditChange('creditHours', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lecture Hrs (L)</label>
+                <input type="number" min="0" value={editData.lectureHours}
+                  onChange={(e) => handleEditChange('lectureHours', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tutorial Hrs (T)</label>
+                <input type="number" min="0" value={editData.tutorialHours}
+                  onChange={(e) => handleEditChange('tutorialHours', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Practical Hrs (P)</label>
+                <input type="number" min="0" value={editData.practicalHours}
+                  onChange={(e) => handleEditChange('practicalHours', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
             </div>
             <div className="mt-4 flex gap-3">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
-              >
+              <button type="submit" disabled={saving}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50">
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
-              >
+              <button type="button" onClick={cancelEdit}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md">
                 Cancel
               </button>
             </div>
@@ -450,10 +507,12 @@ const ManageCourses = ({ deptId }) => {
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Code</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Sem</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Credit Hours</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Credits</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">L-T-P</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -470,10 +529,19 @@ const ManageCourses = ({ deptId }) => {
                     return (
                       <tr key={data.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.id}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.courseCode}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">{data.courseCode}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.courseName}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.semester}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${data.courseType === 'LAB'
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
+                              : data.courseType === 'TUTORIAL'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                            }`}>{data.courseType}</span>
+                        </td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.creditHours}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{data.lectureHours}-{data.tutorialHours}-{data.practicalHours}</td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex gap-2">
                             <button
