@@ -79,8 +79,10 @@ export const courseAPI = {
     method: 'DELETE',
   }),
   bulkUpload: (formData, deptId) => {
-    // Append deptId to URL or FormData? Controller expects Query Param.
-    return fetchAPI(`/api/admin/course/upload?deptId=${deptId}`, {
+    const url = deptId
+      ? `/api/admin/course/upload?deptId=${deptId}`
+      : '/api/admin/course/upload';
+    return fetchAPI(url, {
       method: 'POST',
       body: formData,
     });

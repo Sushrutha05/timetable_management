@@ -96,8 +96,8 @@ const ManageCourses = ({ deptId }) => {
       return;
     }
 
-    if (!deptId) {
-      setBulkMessage({ type: 'error', text: 'Department context is missing.' });
+    if (!deptId || deptId === 'null' || deptId === 'undefined') {
+      setBulkMessage({ type: 'error', text: 'No department selected. Please select a department from the sidebar before uploading.' });
       return;
     }
 
