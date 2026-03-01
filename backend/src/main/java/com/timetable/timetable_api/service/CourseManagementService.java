@@ -133,21 +133,18 @@ public class CourseManagementService {
     }
 
     /**
-     * Deletes a course.
+     * Deletes a course and all its department links.
      */
     @Transactional
     public void deleteCourse(Long id) {
-        // If we delete the course, the link CASCADE might handles it?
-        // DepartmentCourse has @ManyToOne to Course.
-        // Try deleting course.
-        if (courseRepository.existsById(id)) {
-            // We might need to delete links first if no cascade
-            // departmentCourseRepository.deleteByCourseId(id); // If we add this method
-            // For now, try delete course.
-            courseRepository.deleteById(id);
-        } else {
+        if (!courseRepository.existsById(id)) {
             throw new RuntimeException("Course not found with ID: " + id);
         }
+        // Must delete department_courses links first to satisfy FK constraint
+        departmentCourseRepository.deleteByCourseId(id);
+        courseRepository.deleteById(id);
+    }
+
     }
 
     /**
