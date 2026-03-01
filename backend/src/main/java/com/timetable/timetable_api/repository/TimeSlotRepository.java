@@ -10,5 +10,6 @@ import java.util.List;
 public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
 
     List<TimeSlot> findAllByOrderByDayOfWeekAscStartTimeAsc();
-}
 
+    List<TimeSlot> findBySemesterGroupOrderByDayOfWeekAscStartTimeAsc(String semesterGroup);
+}
