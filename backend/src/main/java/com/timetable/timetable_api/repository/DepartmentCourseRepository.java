@@ -9,14 +9,15 @@ import java.util.List;
 
 @Repository
 public interface DepartmentCourseRepository extends JpaRepository<DepartmentCourse, DepartmentCourseId> {
-    // Primary Key is the 'DepartmentCourseId' class
     List<DepartmentCourse> findByIdDepartmentId(Integer departmentId);
 
-    // Convenience traversal via relation to fetch by Department.id
     List<DepartmentCourse> findByDepartmentId(Integer departmentId);
 
-    // Fetch by Department and Semester
     List<DepartmentCourse> findByDepartmentIdAndSemester(Integer departmentId, Integer semester);
 
     long countByDepartmentId(Integer departmentId);
+
+    // Used by deleteCourse to remove all department links before deleting the
+    // course
+    void deleteByCourseId(Long courseId);
 }
