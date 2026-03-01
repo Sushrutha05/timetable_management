@@ -388,7 +388,7 @@ const ManageCourses = ({ deptId }) => {
                 >
                   Download template
                 </a>
-                <span>Headers: courseCode, courseName, creditHours, semester (optional)</span>
+                <span>Required: courseCode, courseName, creditHours &nbsp;|&nbsp; Optional: semester, courseType, lectureHours, tutorialHours, practicalHours</span>
               </div>
               <button
                 type="submit"
@@ -404,9 +404,11 @@ const ManageCourses = ({ deptId }) => {
           <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">CSV Format Tips</h3>
           <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-2">
             <li>Include the header row exactly as shown.</li>
-            <li>`creditHours` must be a whole number.</li>
-            <li>Course codes must be unique.</li>
-            <li>Semester will be set to default (1) or handled by backend logic if column missing.</li>
+            <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">creditHours</code> must be a whole number.</li>
+            <li>Course codes must be unique per department.</li>
+            <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">courseType</code>: <strong>THEORY</strong>, <strong>LAB</strong>, or <strong>TUTORIAL</strong> (defaults to THEORY if omitted).</li>
+            <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">lectureHours</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tutorialHours</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">practicalHours</code>: L-T-P breakdown (default 0).</li>
+            <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">semester</code>: defaults to 1 if omitted.</li>
           </ul>
         </div>
       </div>
@@ -534,10 +536,10 @@ const ManageCourses = ({ deptId }) => {
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.semester}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${data.courseType === 'LAB'
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
-                              : data.courseType === 'TUTORIAL'
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                                : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
+                            : data.courseType === 'TUTORIAL'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
                             }`}>{data.courseType}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.creditHours}</td>
