@@ -19,10 +19,9 @@ function App() {
     setUserRole(data.role);
     setUserEmail(data.email);
     setRequiresReset(data.requiresPasswordReset);
-    if (data.role === 2) {
-      setFacultyId(data.facultyId);
-      setDeptId(data.deptId);
-    }
+    // Always capture deptId and facultyId for any role
+    setFacultyId(data.facultyId ?? null);
+    setDeptId(data.deptId ?? null);
   };
 
   const handleLogout = () => {
