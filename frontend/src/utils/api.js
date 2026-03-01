@@ -144,7 +144,10 @@ export const designationAPI = {
 
 // Admin APIs - Time Slots
 export const timeSlotAPI = {
-  getAll: () => fetchAPI('/api/admin/timeslot'),
+  getAll: (semesterGroup) => {
+    const params = semesterGroup ? `?semesterGroup=${semesterGroup}` : '';
+    return fetchAPI(`/api/admin/timeslot${params}`);
+  },
   create: (data) => fetchAPI('/api/admin/timeslot', {
     method: 'POST',
     body: JSON.stringify(data),
