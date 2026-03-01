@@ -9,20 +9,20 @@ import com.timetable.timetable_api.repository.DepartmentRepository;
 import com.timetable.timetable_api.repository.DesignationConstraintRepository;
 import com.timetable.timetable_api.repository.FacultyRepository;
 import com.timetable.timetable_api.repository.UserRepository;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 @Service
 public class FacultyManagementService {
@@ -42,61 +42,51 @@ public class FacultyManagementService {
     /**
      * Creates a new Faculty member along with their User account.
      */
-    @Transactional // Ensures if any step fails, everything is rolled back
+    @Transactional
     public Faculty createFaculty(FacultyCreationRequest request) {
         validateFacultyRequest(request);
 
         Department department = resolveDepartment(request.getDepartmentId());
         DesignationConstraint designation = resolveDesignation(request.getDesignation());
 
-        // 2. Create and Save the User Account
-        User newUser = new User();
-
-        // Enforce Organization Email
-        if (request.getEmail() == null || !request.getEmail().toLowerCase().endsWith("@organisation.edu")) {
-            throw new RuntimeException("All accounts must use an @organisation.edu email address.");
+        // Find or create the user account — prevents duplicate email errors on
+        // re-upload
+        User existingUser = userRepository.findByEmail(request.getEmail().trim());
+        User savedUser;
+        if (existingUser != null) {
+            // User already exists: update department linkage if needed
+            existingUser.setDepartmentId(department.getId());
+            savedUser = userRepository.save(existingUser);
+        } else {
+            User newUser = new User();
+            newUser.setEmail(request.getEmail().trim());
+            newUser.setPasswordHash(
+                    request.getPassword() != null && !request.getPassword().isEmpty()
+                            ? request.getPassword()
+                            : "Welcome@123");
+            newUser.setRequiresPasswordReset(true);
+            newUser.setRole(2); // 2 = FACULTY role
+            newUser.setDepartmentId(department.getId());
+            savedUser = userRepository.save(newUser);
         }
-        newUser.setEmail(request.getEmail());
 
-        // Assign default password and require reset
-        // In a real app, ALWAYS hash passwords (e.g., BCrypt). Storing plain text for
-        // now,
-        // although passwordEncoder is typically available via context. We will set it
-        // directly as plain
-        // or whatever format the request.getPassword() handles, though we should
-        // probably encode it.
-        newUser.setPasswordHash(
-                request.getPassword() != null && !request.getPassword().isEmpty() ? request.getPassword()
-                        : "Welcome@123");
-        newUser.setRequiresPasswordReset(true);
-
-        newUser.setRole(2); // 2 = FACULTY role
-        // Link to Dept ID for User as well? Faculty user might need it for login logic
-        // or scope
-        newUser.setDepartmentId(department.getId());
-        User savedUser = userRepository.save(newUser);
-
-        // 3. Create and Save the Faculty Profile
         Faculty newFaculty = new Faculty();
-        newFaculty.setUser(savedUser); // Link to the user we just created
-        newFaculty.setDepartment(department); // Link to the department
-        newFaculty.setDesignationConstraint(designation); // Link to designation rules
-
+        newFaculty.setUser(savedUser);
+        newFaculty.setDepartment(department);
+        newFaculty.setDesignationConstraint(designation);
         newFaculty.setFirstName(request.getFirstName());
         newFaculty.setLastName(request.getLastName());
         newFaculty.setMiddleInitial(request.getMiddleInitial());
-        // Removed Date fields
 
         return facultyRepository.save(newFaculty);
     }
 
     /**
      * Updates an existing faculty member (and related user record).
+     * Password is only updated if a non-blank value is provided.
      */
     @Transactional
     public Faculty updateFaculty(Long facultyId, FacultyCreationRequest request) {
-        validateFacultyRequest(request);
-
         Faculty existing = facultyRepository.findById(facultyId)
                 .orElseThrow(() -> new RuntimeException("Faculty not found with ID: " + facultyId));
 
@@ -105,21 +95,32 @@ public class FacultyManagementService {
             throw new RuntimeException("Faculty record is missing the associated user account.");
         }
 
-        Department department = resolveDepartment(request.getDepartmentId());
-        DesignationConstraint designation = resolveDesignation(request.getDesignation());
+        Department department = resolveDepartment(
+                request.getDepartmentId() != null ? request.getDepartmentId() : existing.getDepartment().getId());
 
-        linkedUser.setEmail(request.getEmail());
-        linkedUser.setPasswordHash(request.getPassword());
-        // Update user dept too?
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            linkedUser.setEmail(request.getEmail().trim());
+        }
+        // Only update password when the caller explicitly provides a non-blank value
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            linkedUser.setPasswordHash(request.getPassword());
+        }
         linkedUser.setDepartmentId(department.getId());
         userRepository.save(linkedUser);
 
         existing.setDepartment(department);
-        existing.setDesignationConstraint(designation);
-        existing.setFirstName(request.getFirstName());
-        existing.setLastName(request.getLastName());
-        existing.setMiddleInitial(request.getMiddleInitial());
-        // Removed Date fields
+        if (request.getDesignation() != null && !request.getDesignation().trim().isEmpty()) {
+            existing.setDesignationConstraint(resolveDesignation(request.getDesignation()));
+        }
+        if (request.getFirstName() != null && !request.getFirstName().trim().isEmpty()) {
+            existing.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null && !request.getLastName().trim().isEmpty()) {
+            existing.setLastName(request.getLastName());
+        }
+        if (request.getMiddleInitial() != null) {
+            existing.setMiddleInitial(request.getMiddleInitial());
+        }
 
         return facultyRepository.save(existing);
     }
@@ -136,34 +137,43 @@ public class FacultyManagementService {
 
     /**
      * Bulk create faculty records from a CSV stream.
+     * Uses Apache Commons CSV to correctly handle quoted multi-line field values.
+     * The entire batch is @Transactional — if any row fails, ALL rows roll back,
+     * so a retry on a corrected CSV will never hit duplicate-email conflicts.
      */
+    @Transactional
     public List<Faculty> bulkCreateFaculty(InputStream inputStream, Integer defaultDeptId) {
         List<Faculty> createdFaculty = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) {
-                throw new RuntimeException("CSV file is empty.");
+        CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+                .setHeader()
+                .setSkipHeaderRecord(true)
+                .setIgnoreHeaderCase(true)
+                .setTrim(true)
+                .setIgnoreEmptyLines(true)
+                .build();
+
+        try (Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+                var csvParser = csvFormat.parse(reader)) {
+
+            // Validate required columns exist
+            List<String> missingHeaders = new ArrayList<>();
+            for (String required : List.of("email", "password", "firstname", "lastname", "designation")) {
+                if (!csvParser.getHeaderMap().containsKey(required.toLowerCase(Locale.ROOT))) {
+                    missingHeaders.add(required);
+                }
+            }
+            if (!missingHeaders.isEmpty()) {
+                throw new RuntimeException("CSV is missing required columns: " + String.join(", ", missingHeaders));
             }
 
-            Map<String, Integer> headerIndex = mapHeaderIndexes(headerLine);
-            validateRequiredHeaders(headerIndex);
-
-            String line;
-            int rowNumber = 1; // header
-            while ((line = reader.readLine()) != null) {
+            int rowNumber = 1;
+            for (CSVRecord record : csvParser) {
                 rowNumber++;
-                if (line.trim().isEmpty()) {
-                    continue;
-                }
-
-                String[] values = splitCsvLine(line);
-                FacultyCreationRequest request = buildRequestFromRow(values, headerIndex, rowNumber);
-
+                FacultyCreationRequest request = buildRequestFromRecord(record, rowNumber);
                 if (request.getDepartmentId() == null) {
                     request.setDepartmentId(defaultDeptId);
                 }
-
                 createdFaculty.add(createFaculty(request));
             }
         } catch (IOException e) {
@@ -185,6 +195,35 @@ public class FacultyManagementService {
         return facultyRepository.findById(id).orElse(null);
     }
 
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    private FacultyCreationRequest buildRequestFromRecord(CSVRecord record, int rowNumber) {
+        FacultyCreationRequest request = new FacultyCreationRequest();
+        request.setEmail(getOpt(record, "email"));
+        request.setPassword(getOpt(record, "password"));
+        request.setFirstName(getOpt(record, "firstname"));
+        request.setLastName(getOpt(record, "lastname"));
+        request.setDesignation(getOpt(record, "designation"));
+
+        if (record.isMapped("middleinitial")) {
+            request.setMiddleInitial(getOpt(record, "middleinitial"));
+        }
+        String deptIdStr = getOpt(record, "departmentid");
+        if (!deptIdStr.isEmpty()) {
+            try {
+                request.setDepartmentId(Integer.parseInt(deptIdStr));
+            } catch (NumberFormatException ex) {
+                throw new RuntimeException(
+                        "Invalid departmentId on row " + rowNumber + ": \"" + deptIdStr + "\"", ex);
+            }
+        }
+        return request;
+    }
+
+    private String getOpt(CSVRecord record, String key) {
+        return record.isMapped(key) ? record.get(key).trim() : "";
+    }
+
     private void validateFacultyRequest(FacultyCreationRequest request) {
         if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
             throw new RuntimeException("Email is required");
@@ -195,7 +234,6 @@ public class FacultyManagementService {
         if (request.getFirstName() == null || request.getFirstName().trim().isEmpty()) {
             throw new RuntimeException("First name is required");
         }
-        // Removed Date validations
         if (request.getDepartmentId() == null) {
             throw new RuntimeException("Department ID is required");
         }
@@ -214,69 +252,10 @@ public class FacultyManagementService {
     }
 
     private DesignationConstraint resolveDesignation(String designationCode) {
-        return designationRepository.findById(designationCode)
-                .orElseThrow(() -> new RuntimeException("Designation not found: " + designationCode));
-    }
-
-    private Map<String, Integer> mapHeaderIndexes(String headerLine) {
-        String[] headers = splitCsvLine(headerLine);
-        Map<String, Integer> index = new HashMap<>();
-        for (int i = 0; i < headers.length; i++) {
-            index.put(headers[i].trim().toLowerCase(Locale.ROOT), i);
-        }
-        return index;
-    }
-
-    private void validateRequiredHeaders(Map<String, Integer> headerIndex) {
-        // Removed dateofjoining, dateofbirth
-        List<String> requiredHeaders = List.of("email", "password", "firstname", "lastname",
-                "designation"); // Department ID might be from context or CSV
-        for (String header : requiredHeaders) {
-            if (!headerIndex.containsKey(header)) {
-                throw new RuntimeException("Missing required CSV header: " + header);
-            }
-        }
-    }
-
-    private FacultyCreationRequest buildRequestFromRow(String[] values, Map<String, Integer> headerIndex,
-            int rowNumber) {
-        try {
-            FacultyCreationRequest request = new FacultyCreationRequest();
-            request.setEmail(getValue(values, headerIndex, "email"));
-            request.setPassword(getValue(values, headerIndex, "password"));
-            request.setFirstName(getValue(values, headerIndex, "firstname"));
-            request.setLastName(getValue(values, headerIndex, "lastname"));
-            // Removed Dates
-            request.setDesignation(getValue(values, headerIndex, "designation"));
-
-            if (headerIndex.containsKey("departmentid")) {
-                request.setDepartmentId(Integer.parseInt(getValue(values, headerIndex, "departmentid")));
-            }
-
-            // Optional column
-            if (headerIndex.containsKey("middleinitial")) {
-                request.setMiddleInitial(getValue(values, headerIndex, "middleinitial"));
-            }
-            return request;
-        } catch (NumberFormatException ex) {
-            throw new RuntimeException("Invalid data format on row " + rowNumber + ": " + ex.getMessage(), ex);
-        }
-    }
-
-    private String getValue(String[] values, Map<String, Integer> headerIndex, String key) {
-        Integer idx = headerIndex.get(key);
-        if (idx == null || idx >= values.length) {
-            return "";
-        }
-        String raw = values[idx];
-        String trimmed = raw == null ? "" : raw.trim();
-        if (trimmed.startsWith("\"") && trimmed.endsWith("\"") && trimmed.length() >= 2) {
-            trimmed = trimmed.substring(1, trimmed.length() - 1);
-        }
-        return trimmed;
-    }
-
-    private String[] splitCsvLine(String line) {
-        return line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+        return designationRepository.findByDesignationIgnoreCase(designationCode.trim())
+                .orElseThrow(() -> new RuntimeException(
+                        "Designation not found: \"" + designationCode + "\". " +
+                                "Valid values are: HOD, Dean, Professor, Associate Professor, " +
+                                "Assistant Professor, Senior Assistant Professor, Professor of Practice"));
     }
 }

@@ -20,6 +20,7 @@ const ManageFaculty = ({ deptId }) => {
     departmentId: '',
   });
   const [bulkFile, setBulkFile] = useState(null);
+  const [bulkFileName, setBulkFileName] = useState('');
   const [bulkUploading, setBulkUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [editingId, setEditingId] = useState(null);
@@ -114,7 +115,8 @@ const ManageFaculty = ({ deptId }) => {
 
     try {
       const formDataUpload = new FormData();
-      formDataUpload.append('file', bulkFile);
+      // bulkFile is already an in-memory Blob snapshot — immune to disk changes
+      formDataUpload.append('file', bulkFile, bulkFileName || 'faculty.csv');
       const result = await facultyAPI.bulkUpload(formDataUpload, deptId);
       const count = Array.isArray(result) ? result.length : 0;
       setBulkMessage({
@@ -122,6 +124,7 @@ const ManageFaculty = ({ deptId }) => {
         text: `Successfully imported ${count} faculty record${count === 1 ? '' : 's'}.`,
       });
       setBulkFile(null);
+      setBulkFileName('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -353,8 +356,15 @@ const ManageFaculty = ({ deptId }) => {
                 accept=".csv"
                 ref={fileInputRef}
                 onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setBulkFile(file);
+                  const file = e.target.files?.[0];
+                  if (!file) { setBulkFile(null); setBulkFileName(''); return; }
+                  setBulkFileName(file.name);
+                  // Read into memory immediately to avoid ERR_UPLOAD_FILE_CHANGED
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setBulkFile(new Blob([ev.target.result], { type: 'text/csv' }));
+                  };
+                  reader.readAsArrayBuffer(file);
                 }}
                 className="block w-full text-sm text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
               />
@@ -392,39 +402,80 @@ const ManageFaculty = ({ deptId }) => {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Faculty</h3>
           <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
-              <select
-                value={editData.designation}
-                onChange={(e) => handleEditChange('designation', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">Select Designation</option>
-                {designationList.map((d) => (
-                  <option key={d.designation} value={d.designation}>
-                    {d.designation}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {!deptId && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={editData.firstName}
+                  onChange={(e) => handleEditChange('firstName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={editData.lastName}
+                  onChange={(e) => handleEditChange('lastName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Initial</label>
+                <input
+                  type="text"
+                  maxLength={1}
+                  value={editData.middleInitial}
+                  onChange={(e) => handleEditChange('middleInitial', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
                 <select
-                  value={editData.departmentId}
-                  onChange={(e) => handleEditChange('departmentId', e.target.value)}
+                  value={editData.designation}
+                  onChange={(e) => handleEditChange('designation', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 >
-                  <option value="">Select Department</option>
-                  {departmentList.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
+                  <option value="">Select Designation</option>
+                  {designationList.map((d) => (
+                    <option key={d.designation} value={d.designation}>
+                      {d.designation}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
+              {!deptId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                  <select
+                    value={editData.departmentId}
+                    onChange={(e) => handleEditChange('departmentId', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select Department</option>
+                    {departmentList.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  New Password <span className="text-gray-400 text-xs">(leave blank to keep current)</span>
+                </label>
+                <input
+                  type="password"
+                  value={editData.password}
+                  onChange={(e) => handleEditChange('password', e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
             <div className="mt-4 flex gap-3">
               <button
                 type="submit"
