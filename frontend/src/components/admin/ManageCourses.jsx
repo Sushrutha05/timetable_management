@@ -308,6 +308,8 @@ const ManageCourses = ({ deptId }) => {
                   <option value="THEORY">Theory</option>
                   <option value="LAB">Lab</option>
                   <option value="TUTORIAL">Tutorial</option>
+                  <option value="IC">Integrated Course (IC)</option>
+                  <option value="AUDIT">Audit (Non-Credit)</option>
                 </select>
               </div>
               <div>
@@ -452,6 +454,8 @@ const ManageCourses = ({ deptId }) => {
                   <option value="THEORY">Theory</option>
                   <option value="LAB">Lab</option>
                   <option value="TUTORIAL">Tutorial</option>
+                  <option value="IC">Integrated Course (IC)</option>
+                  <option value="AUDIT">Audit (Non-Credit)</option>
                 </select>
               </div>
               <div>
@@ -536,10 +540,14 @@ const ManageCourses = ({ deptId }) => {
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.semester}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${data.courseType === 'LAB'
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
-                            : data.courseType === 'TUTORIAL'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                              : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
+                              : data.courseType === 'TUTORIAL'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                                : data.courseType === 'IC'
+                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200'
+                                  : data.courseType === 'AUDIT'
+                                    ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200'
+                                    : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
                             }`}>{data.courseType}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.creditHours}</td>
