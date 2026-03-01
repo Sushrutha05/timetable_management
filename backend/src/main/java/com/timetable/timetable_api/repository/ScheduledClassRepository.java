@@ -10,13 +10,19 @@ import java.util.List; // Add this import
 public interface ScheduledClassRepository extends JpaRepository<ScheduledClass, Long> {
     // Primary Key 'class_id' is a Long
 
-    // Existing helper queries
     List<ScheduledClass> findByCourseOffering_Faculty_Id(Long facultyId);
+
     List<ScheduledClass> findByCourseOffering_Section_Id(Long sectionId);
 
-    // Conflict checks for a specific day + start time
     List<ScheduledClass> findByDayOfWeekAndStartTime(String dayOfWeek, java.time.LocalTime startTime);
 
-    // Room-time conflicts on a specific day/time
-    List<ScheduledClass> findByRoom_IdAndDayOfWeekAndStartTime(Integer roomId, String dayOfWeek, java.time.LocalTime startTime);
+    List<ScheduledClass> findByRoom_IdAndDayOfWeekAndStartTime(Integer roomId, String dayOfWeek,
+            java.time.LocalTime startTime);
+
+    // Used by cascade delete: remove scheduled classes for a course offering
+    void deleteByCourseOfferingId(Long courseOfferingId);
+
+    // Used by cascade delete: remove all scheduled classes for a given course (via
+    // offering)
+    void deleteByCourseOffering_CourseId(Long courseId);
 }
