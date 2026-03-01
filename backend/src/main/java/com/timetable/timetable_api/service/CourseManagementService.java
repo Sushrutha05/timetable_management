@@ -228,26 +228,68 @@ public class CourseManagementService {
             CourseCreationRequest request = new CourseCreationRequest();
             request.setCourseCode(getValue(values, headerIndex, "coursecode"));
             request.setCourseName(getValue(values, headerIndex, "coursename"));
-            request.setCreditHours(Integer.parseInt(getValue(values, headerIndex, "credithours")));
+
+            String creditHoursRaw = getValue(values, headerIndex, "credithours");
+            if (creditHoursRaw.isEmpty()) {
+                throw new RuntimeException("creditHours is required but was empty on row " + rowNumber);
+            }
+            request.setCreditHours(parseInt(creditHoursRaw, "creditHours", rowNumber));
 
             if (headerIndex.containsKey("coursetype")) {
-                request.setCourseType(getValue(values, headerIndex, "coursetype"));
+                String ct = getValue(values, headerIndex, "coursetype");
+                request.setCourseType(ct.isEmpty() ? "THEORY" : ct);
+            } else {
+                request.setCourseType("THEORY");
             }
 
             if (headerIndex.containsKey("semester")) {
-                request.setSemester(Integer.parseInt(getValue(values, headerIndex, "semester")));
+                String semRaw = getValue(values, headerIndex, "semester");
+                request.setSemester(semRaw.isEmpty() ? 1 : parseInt(semRaw, "semester", rowNumber));
             } else {
-                request.setSemester(1); // Default
+                request.setSemester(1);
             }
 
-            // If CSV has departmentId
+            if (headerIndex.containsKey("lecturehours")) {
+                String raw = getValue(values, headerIndex, "lecturehours");
+                request.setLectureHours(raw.isEmpty() ? 0 : parseInt(raw, "lectureHours", rowNumber));
+            } else {
+                request.setLectureHours(0);
+            }
+
+            if (headerIndex.containsKey("tutorialhours")) {
+                String raw = getValue(values, headerIndex, "tutorialhours");
+                request.setTutorialHours(raw.isEmpty() ? 0 : parseInt(raw, "tutorialHours", rowNumber));
+            } else {
+                request.setTutorialHours(0);
+            }
+
+            if (headerIndex.containsKey("practicalhours")) {
+                String raw = getValue(values, headerIndex, "practicalhours");
+                request.setPracticalHours(raw.isEmpty() ? 0 : parseInt(raw, "practicalHours", rowNumber));
+            } else {
+                request.setPracticalHours(0);
+            }
+
             if (headerIndex.containsKey("departmentid")) {
-                request.setDepartmentId(Integer.parseInt(getValue(values, headerIndex, "departmentid")));
+                String raw = getValue(values, headerIndex, "departmentid");
+                if (!raw.isEmpty()) {
+                    request.setDepartmentId(parseInt(raw, "departmentId", rowNumber));
+                }
             }
 
             return request;
+        } catch (RuntimeException ex) {
+            throw new RuntimeException("Error on row " + rowNumber + ": " + ex.getMessage(), ex);
+        }
+    }
+
+    /** Parses an int from a string with a friendly error message. */
+    private int parseInt(String value, String fieldName, int rowNumber) {
+        try {
+            return Integer.parseInt(value.trim());
         } catch (NumberFormatException ex) {
-            throw new RuntimeException("Invalid number format on row " + rowNumber + ": " + ex.getMessage(), ex);
+            throw new RuntimeException(
+                    "Invalid number for '" + fieldName + "' on row " + rowNumber + " (got: \"" + value + "\")");
         }
     }
 
