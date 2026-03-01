@@ -408,7 +408,7 @@ const ManageCourses = ({ deptId }) => {
             <li>Include the header row exactly as shown.</li>
             <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">creditHours</code> must be a whole number.</li>
             <li>Course codes must be unique per department.</li>
-            <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">courseType</code>: <strong>THEORY</strong>, <strong>LAB</strong>, or <strong>TUTORIAL</strong> (defaults to THEORY if omitted).</li>
+            <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">courseType</code>: <strong>THEORY</strong>, <strong>LAB</strong>, <strong>TUTORIAL</strong>, <strong>IC</strong> (Integrated), or <strong>AUDIT</strong> (Non-Credit) — defaults to THEORY if omitted.</li>
             <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">lectureHours</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tutorialHours</code>, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">practicalHours</code>: L-T-P breakdown (default 0).</li>
             <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">semester</code>: defaults to 1 if omitted.</li>
           </ul>
@@ -540,14 +540,14 @@ const ManageCourses = ({ deptId }) => {
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.semester}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${data.courseType === 'LAB'
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
-                              : data.courseType === 'TUTORIAL'
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                                : data.courseType === 'IC'
-                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200'
-                                  : data.courseType === 'AUDIT'
-                                    ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200'
-                                    : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200'
+                            : data.courseType === 'TUTORIAL'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                              : data.courseType === 'IC'
+                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200'
+                                : data.courseType === 'AUDIT'
+                                  ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200'
+                                  : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
                             }`}>{data.courseType}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.creditHours}</td>
