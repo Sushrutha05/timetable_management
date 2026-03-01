@@ -13,6 +13,8 @@ public class TimeSlotRequest {
     @JsonProperty("isBreak")
     private boolean breakSlot;
 
+    private String semesterGroup;
+
     public String getDayOfWeek() {
         return dayOfWeek;
     }
@@ -44,5 +46,13 @@ public class TimeSlotRequest {
 
     public void setBreak(boolean breakSlot) {
         this.breakSlot = breakSlot;
+    }
+
+    public String getSemesterGroup() {
+        return semesterGroup;
+    }
+
+    public void setSemesterGroup(String semesterGroup) {
+        this.semesterGroup = semesterGroup;
     }
 }

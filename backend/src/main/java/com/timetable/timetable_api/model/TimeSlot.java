@@ -25,6 +25,9 @@ public class TimeSlot {
     @Column(name = "is_break", nullable = false)
     private boolean breakSlot;
 
+    @Column(name = "semester_group", nullable = false)
+    private String semesterGroup;
+
     public Long getId() {
         return id;
     }
@@ -64,5 +67,12 @@ public class TimeSlot {
     public void setBreakSlot(boolean breakSlot) {
         this.breakSlot = breakSlot;
     }
-}
 
+    public String getSemesterGroup() {
+        return semesterGroup;
+    }
+
+    public void setSemesterGroup(String semesterGroup) {
+        this.semesterGroup = semesterGroup;
+    }
+}
