@@ -40,7 +40,6 @@ public class CourseManagementService {
      */
     @Transactional
     public DepartmentCourse createCourse(CourseCreationRequest request) {
-        // Validation
         if (request.getDepartmentId() == null) {
             throw new RuntimeException("Department ID is required");
         }
@@ -48,23 +47,34 @@ public class CourseManagementService {
             throw new RuntimeException("Semester is required");
         }
 
-        // 1. Create/Save Course
-        Course newCourse = new Course();
-        newCourse.setCourseCode(request.getCourseCode());
-        newCourse.setCourseName(request.getCourseName());
-        newCourse.setCreditHours(request.getCreditHours());
-        newCourse.setCourseType(request.getCourseType());
-        newCourse.setLectureHours(request.getLectureHours() != null ? request.getLectureHours() : 0);
-        newCourse.setTutorialHours(request.getTutorialHours() != null ? request.getTutorialHours() : 0);
-        newCourse.setPracticalHours(request.getPracticalHours() != null ? request.getPracticalHours() : 0);
+        // 1. Find existing course by code, or create a new one
+        Course course = courseRepository.findByCourseCode(request.getCourseCode())
+                .orElseGet(() -> {
+                    Course newCourse = new Course();
+                    newCourse.setCourseCode(request.getCourseCode());
+                    return newCourse;
+                });
 
-        Course savedCourse = courseRepository.save(newCourse);
+        // Always update mutable fields so a re-upload can fix names/hours
+        course.setCourseName(request.getCourseName());
+        course.setCreditHours(request.getCreditHours());
+        course.setCourseType(request.getCourseType() != null ? request.getCourseType() : "THEORY");
+        course.setLectureHours(request.getLectureHours() != null ? request.getLectureHours() : 0);
+        course.setTutorialHours(request.getTutorialHours() != null ? request.getTutorialHours() : 0);
+        course.setPracticalHours(request.getPracticalHours() != null ? request.getPracticalHours() : 0);
+        Course savedCourse = courseRepository.save(course);
 
         // 2. Resolve Department
         Department department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
 
-        // 3. Link Department and Course with Semester
+        // 3. Link Department + Course + Semester (skip if already linked)
+        DepartmentCourseId linkId = new DepartmentCourseId(department.getId(), savedCourse.getId());
+        if (departmentCourseRepository.existsById(linkId)) {
+            // Link already exists — return it as-is
+            return departmentCourseRepository.findById(linkId).get();
+        }
+
         DepartmentCourse deptCourse = new DepartmentCourse(department, savedCourse, request.getSemester());
         return departmentCourseRepository.save(deptCourse);
     }
