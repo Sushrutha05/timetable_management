@@ -23,7 +23,9 @@ const ManageCourses = ({ deptId }) => {
     practicalHours: '',
   });
 
-  const [bulkFile, setBulkFile] = useState(null);
+  // Store both the Blob snapshot and the display name separately
+  const [bulkFile, setBulkFile] = useState(null);      // Blob (in-memory snapshot)
+  const [bulkFileName, setBulkFileName] = useState(''); // for display
   const [bulkUploading, setBulkUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -106,8 +108,8 @@ const ManageCourses = ({ deptId }) => {
 
     try {
       const formDataUpload = new FormData();
-      formDataUpload.append('file', bulkFile);
-      // deptId passed as second arg
+      // bulkFile is already an in-memory Blob snapshot — immune to disk changes
+      formDataUpload.append('file', bulkFile, bulkFileName || 'courses.csv');
       const result = await courseAPI.bulkUpload(formDataUpload, deptId);
       const count = Array.isArray(result) ? result.length : 0;
       setBulkMessage({
@@ -115,9 +117,8 @@ const ManageCourses = ({ deptId }) => {
         text: `Successfully imported ${count} course${count === 1 ? '' : 's'}.`,
       });
       setBulkFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setBulkFileName('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       loadCourses();
     } catch (error) {
       setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
@@ -377,8 +378,15 @@ const ManageCourses = ({ deptId }) => {
                 accept=".csv"
                 ref={fileInputRef}
                 onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setBulkFile(file);
+                  const file = e.target.files?.[0];
+                  if (!file) { setBulkFile(null); setBulkFileName(''); return; }
+                  setBulkFileName(file.name);
+                  // Read into memory immediately to avoid ERR_UPLOAD_FILE_CHANGED
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setBulkFile(new Blob([ev.target.result], { type: 'text/csv' }));
+                  };
+                  reader.readAsArrayBuffer(file);
                 }}
                 className="block w-full text-sm text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
               />
