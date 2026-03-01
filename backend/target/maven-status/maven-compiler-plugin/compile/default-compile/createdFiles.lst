@@ -7,10 +7,13 @@ com/timetable/timetable_api/dto/FacultyCreationRequest.class
 com/timetable/timetable_api/repository/RoomRepository.class
 com/timetable/timetable_api/service/FacultyPreferenceService.class
 com/timetable/timetable_api/controller/RoomManagementController.class
+com/timetable/timetable_api/model/TimetableMetadata.class
 com/timetable/timetable_api/model/DepartmentCourseId.class
 com/timetable/timetable_api/model/TimeSlot.class
 com/timetable/timetable_api/model/Course.class
+com/timetable/timetable_api/controller/DepartmentController.class
 com/timetable/timetable_api/service/TimetableViewService.class
+com/timetable/timetable_api/service/DepartmentService.class
 com/timetable/timetable_api/service/TimeSlotService.class
 com/timetable/timetable_api/controller/TimetableGenerationController.class
 com/timetable/timetable_api/controller/TimetableExportController.class
@@ -38,6 +41,7 @@ com/timetable/timetable_api/model/Department.class
 com/timetable/timetable_api/model/DepartmentCourse.class
 com/timetable/timetable_api/controller/DesignationController.class
 com/timetable/timetable_api/service/TimetableAssignmentService.class
+com/timetable/timetable_api/repository/TimetableMetadataRepository.class
 com/timetable/timetable_api/dto/UpdateSlotRequest.class
 com/timetable/timetable_api/repository/DepartmentRepository.class
 com/timetable/timetable_api/repository/FacultyPreferenceRepository.class
@@ -45,12 +49,14 @@ com/timetable/timetable_api/repository/FacultyRepository.class
 com/timetable/timetable_api/dto/FacultyPreferenceRequest$PreferenceItem.class
 com/timetable/timetable_api/model/ScheduledClass.class
 com/timetable/timetable_api/repository/CourseRepository.class
+com/timetable/timetable_api/dto/PasswordResetRequest.class
 com/timetable/timetable_api/controller/TimeSlotController.class
 com/timetable/timetable_api/model/CourseOffering.class
 com/timetable/timetable_api/repository/DesignationConstraintRepository.class
 com/timetable/timetable_api/dto/TimeSlotRequest.class
 com/timetable/timetable_api/controller/CourseOfferingController.class
 com/timetable/timetable_api/repository/DepartmentCourseRepository.class
+com/timetable/timetable_api/dto/DepartmentCreationRequest.class
 com/timetable/timetable_api/service/RoomManagementService.class
 com/timetable/timetable_api/dto/CourseCreationRequest.class
 com/timetable/timetable_api/model/DesignationConstraint.class

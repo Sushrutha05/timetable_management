@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { API_BASE_URL, sectionAPI, timeSlotAPI, timetableAPI } from '../../utils/api';
+import { API_BASE_URL, sectionAPI, timeSlotAPI, timetableAPI, facultyAPI } from '../../utils/api';
 
 const daysOfWeek = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
@@ -10,18 +10,24 @@ function fmt(t) {
 }
 
 const ViewTimetable = () => {
+  const [viewMode, setViewMode] = useState('SECTION'); // 'SECTION' or 'FACULTY'
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState('');
+  const [faculties, setFaculties] = useState([]);
+  const [selectedFaculty, setSelectedFaculty] = useState('');
   const [timeSlots, setTimeSlots] = useState([]);
   const [timetable, setTimetable] = useState([]);
+  const [status, setStatus] = useState('DRAFT');
   const [loading, setLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [dragging, setDragging] = useState(null); // { id, roomId }
 
   useEffect(() => {
     loadSections();
+    loadFaculties();
     loadTimeSlots();
-    loadTimetable();
+    loadStatus();
   }, []);
 
   const loadSections = async () => {
@@ -30,6 +36,15 @@ const ViewTimetable = () => {
       setSections(data || []);
     } catch (e) {
       setMessage({ type: 'error', text: `Error loading sections: ${e.message}` });
+    }
+  };
+
+  const loadFaculties = async () => {
+    try {
+      const data = await facultyAPI.getAll();
+      setFaculties(data || []);
+    } catch (e) {
+      setMessage({ type: 'error', text: `Error loading faculties: ${e.message}` });
     }
   };
 
@@ -42,15 +57,48 @@ const ViewTimetable = () => {
     }
   };
 
+  const loadStatus = async () => {
+    try {
+      const data = await timetableAPI.getStatus();
+      setStatus(data || 'DRAFT');
+    } catch (e) {
+      console.error('Failed to fetch status', e);
+    }
+  };
+
   const loadTimetable = async () => {
     setLoading(true);
     try {
-      const data = await timetableAPI.getFull();
+      let data = [];
+      if (viewMode === 'SECTION' && selectedSection) {
+        data = await timetableAPI.getForSection(selectedSection);
+      } else if (viewMode === 'FACULTY' && selectedFaculty) {
+        data = await timetableAPI.getForFaculty(selectedFaculty);
+      } else {
+        // If nothing selected, maybe get full or empty. Let's get empty to enforce filtering.
+        setTimetable([]);
+        setLoading(false);
+        return;
+      }
       setTimetable(Array.isArray(data) ? data : []);
     } catch (e) {
       setMessage({ type: 'error', text: `Error loading timetable: ${e.message}` });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const publishTimetable = async () => {
+    if (!window.confirm("Are you sure you want to publish the timetable? This will freeze edits for this generation.")) return;
+    setIsPublishing(true);
+    try {
+      await timetableAPI.publish();
+      setStatus('PUBLISHED');
+      setMessage({ type: 'success', text: 'Timetable published successfully!' });
+    } catch (e) {
+      setMessage({ type: 'error', text: `Error publishing: ${e.message}` });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -79,12 +127,7 @@ const ViewTimetable = () => {
     return Array.from(set).sort();
   }, [timeSlots]);
 
-  const filteredClasses = useMemo(() => {
-    if (!selectedSection) return timetable;
-    return (timetable || []).filter(
-      (c) => c?.courseOffering?.section?.id === Number(selectedSection)
-    );
-  }, [timetable, selectedSection]);
+  const filteredClasses = timetable; // Already filtered from the backend based on viewMode
 
   const classByKey = useMemo(() => {
     const map = new Map();
@@ -109,6 +152,8 @@ const ViewTimetable = () => {
   }, [slotsByDay]);
 
   const onDragStart = (sc) => (e) => {
+    if (status === 'PUBLISHED') return; // Prevent drag if published
+    if (viewMode === 'FACULTY') return; // Prevent drag if in faculty view to avoid context confusion
     setDragging({ id: sc.id, roomId: sc.room?.id });
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -116,6 +161,8 @@ const ViewTimetable = () => {
   const onDragEnd = () => setDragging(null);
 
   const canDrop = (day, startTime) => {
+    if (status === 'PUBLISHED') return false;
+    if (viewMode === 'FACULTY') return false;
     const ts = slotMapByDay[day]?.[startTime];
     if (!ts || ts.isBreakSlot) return false;
     const exists = classByKey.has(`${day}|${startTime}`);
@@ -190,7 +237,7 @@ const ViewTimetable = () => {
         }
         cells.push(
           <td key={`${day}-break-${start}`} colSpan={span}
-              className="px-2 py-3 text-center text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800">
+            className="px-2 py-3 text-center text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800">
             BREAK
           </td>
         );
@@ -219,10 +266,10 @@ const ViewTimetable = () => {
 
         cells.push(
           <td key={`${day}-class-${start}`} colSpan={span}
-              className="align-top px-2 py-2 border border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/30"
-              draggable
-              onDragStart={onDragStart(sc)}
-              onDragEnd={onDragEnd}
+            className="align-top px-2 py-2 border border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/30"
+            draggable
+            onDragStart={onDragStart(sc)}
+            onDragEnd={onDragEnd}
           >
             <div className="text-xs font-semibold text-blue-800 dark:text-blue-200">
               {sc?.courseOffering?.course?.courseCode || 'COURSE'}
@@ -240,8 +287,8 @@ const ViewTimetable = () => {
       const droppable = canDrop(day, start);
       cells.push(
         <td key={`${day}-empty-${start}`} data-day={day} data-start={start}
-            onDragOver={allowDrop(day, start)} onDrop={handleDrop(day, start)}
-            className={`px-2 py-6 text-center text-xs border border-dashed ${droppable ? 'border-green-400 dark:border-green-700 bg-white dark:bg-gray-900' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
+          onDragOver={allowDrop(day, start)} onDrop={handleDrop(day, start)}
+          className={`px-2 py-6 text-center text-xs border border-dashed ${droppable ? 'border-green-400 dark:border-green-700 bg-white dark:bg-gray-900' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
           {droppable ? 'Drop here' : ''}
         </td>
       );
@@ -251,58 +298,122 @@ const ViewTimetable = () => {
   };
 
   const handleDownload = () => {
-    if (!selectedSection) {
-      setMessage({ type: 'error', text: 'Please select a section to download.' });
-      return;
+    if (viewMode === 'SECTION') {
+      if (!selectedSection) {
+        setMessage({ type: 'error', text: 'Please select a section to download.' });
+        return;
+      }
+      const url = `${API_BASE_URL}/api/admin/timetable/download/${selectedSection}?type=xlsx`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      setMessage({ type: 'error', text: 'Downloads are currently only supported in Section view.' });
     }
-    const url = `${API_BASE_URL}/api/admin/timetable/download/${selectedSection}?type=xlsx`;
-    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <div>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Timetable Editor</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Timetable Views</h2>
+          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${status === 'PUBLISHED' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+            {status}
+          </span>
+        </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
-            <select
-              value={selectedSection}
-              onChange={(e) => setSelectedSection(e.target.value)}
-              className="w-full sm:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+          {status !== 'PUBLISHED' && (
+            <button
+              type="button"
+              onClick={publishTimetable}
+              disabled={isPublishing}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50 font-medium"
             >
-              <option value="">Select Section</option>
-              {sections.map((section) => (
-                <option key={section.id} value={section.id}>
-                  {section.name} ({section.department?.name || 'Dept'})
-                </option>
-              ))}
-            </select>
+              {isPublishing ? 'Publishing...' : 'Publish Timetable'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
+        <div className="w-full md:w-1/3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">View Mode</label>
+          <select
+            value={viewMode}
+            onChange={(e) => {
+              setViewMode(e.target.value);
+              setTimetable([]);
+              setSelectedSection('');
+              setSelectedFaculty('');
+            }}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+          >
+            <option value="SECTION">Section View (Student Focus)</option>
+            <option value="FACULTY">Faculty View (Teacher Focus)</option>
+          </select>
+        </div>
+
+        <div className="w-full md:w-1/3">
+          {viewMode === 'SECTION' ? (
+            <>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Section</label>
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">-- Choose Section --</option>
+                {sections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name} ({section.department?.name || 'Dept'})
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Faculty</label>
+              <select
+                value={selectedFaculty}
+                onChange={(e) => setSelectedFaculty(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">-- Choose Faculty --</option>
+                {faculties.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.firstName} {fac.lastName} ({fac.department?.name || 'Dept'})
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={loadTimetable}
+            disabled={loading || (viewMode === 'SECTION' ? !selectedSection : !selectedFaculty)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Loading...' : 'Load Timetable'}
+          </button>
+          {viewMode === 'SECTION' && (
             <button
               type="button"
               onClick={handleDownload}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors disabled:opacity-50"
-              disabled={!sections.length}
+              disabled={!timetable.length}
             >
-              Download XLSX
+              Export
             </button>
-          </div>
-          <button
-            onClick={loadTimetable}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Loading...' : 'Refresh'}
-          </button>
+          )}
         </div>
       </div>
 
       {message.text && (
         <div
-          className={`mb-4 p-3 rounded-md ${
-            message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-          }`}
+          className={`mb-4 p-3 rounded-md ${message.type === 'success'
+            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+            : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+            }`}
         >
           {message.text}
         </div>

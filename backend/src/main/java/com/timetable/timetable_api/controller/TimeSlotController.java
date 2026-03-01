@@ -28,8 +28,11 @@ public class TimeSlotController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TimeSlot>> getAllTimeSlots() {
-        List<TimeSlot> slots = timeSlotService.getAllTimeSlots();
+    public ResponseEntity<List<TimeSlot>> getAllTimeSlots(
+            @RequestParam(required = false) String semesterGroup) {
+        List<TimeSlot> slots = (semesterGroup != null && !semesterGroup.isBlank())
+                ? timeSlotService.getTimeSlotsBySemesterGroup(semesterGroup)
+                : timeSlotService.getAllTimeSlots();
         return new ResponseEntity<>(slots, HttpStatus.OK);
     }
 

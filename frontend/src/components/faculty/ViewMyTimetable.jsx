@@ -1,33 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { facultyPreferenceAPI } from '../../utils/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { timetableAPI, timeSlotAPI } from '../../utils/api';
+
+const daysOfWeek = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+function fmt(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  return `${h}:${m}`;
+}
 
 const ViewMyTimetable = ({ facultyId }) => {
+  const [timeSlots, setTimeSlots] = useState([]);
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     if (facultyId) {
+      loadTimeSlots();
       loadTimetable();
     }
   }, [facultyId]);
 
+  const loadTimeSlots = async () => {
+    try {
+      const data = await timeSlotAPI.getAll();
+      setTimeSlots(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setMessage({ type: 'error', text: `Error loading time slots: ${e.message}` });
+    }
+  };
+
   const loadTimetable = async () => {
     setLoading(true);
     setMessage({ type: '', text: '' });
-
     try {
-      // Note: The endpoint /api/faculty/{facultyId}/timetable currently returns preferences
-      // In a real system, this should return ScheduledClass objects filtered by faculty
-      // For now, we'll try to fetch and display what we can
-      const data = await facultyPreferenceAPI.getTimetable(facultyId);
-
-      // If the endpoint returns preferences instead of scheduled classes, we'll handle that
-      // Otherwise, we expect it to return ScheduledClass objects
+      const data = await timetableAPI.getForFaculty(facultyId);
       setTimetable(Array.isArray(data) ? data : []);
-
       if (data && data.length === 0) {
-        setMessage({ type: 'info', text: 'No scheduled classes found. The timetable may not have been generated yet.' });
+        setMessage({ type: 'info', text: 'No scheduled classes found. The timetable may not have been published yet.' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: `Error loading timetable: ${error.message}` });
@@ -36,67 +47,135 @@ const ViewMyTimetable = ({ facultyId }) => {
     }
   };
 
-  // Group classes by day for better visualization
-  const groupByDay = () => {
-    const grouped = {};
-    timetable.forEach((cls) => {
-      // Handle both ScheduledClass objects and preference objects
-      const day = cls.dayOfWeek || cls.scheduledClass?.dayOfWeek || 'UNKNOWN';
-      if (!grouped[day]) {
-        grouped[day] = [];
+  const slotsByDay = useMemo(() => {
+    const map = {};
+    for (const d of daysOfWeek) map[d] = [];
+    const sorted = [...timeSlots].sort((a, b) => {
+      const da = (a.dayOfWeek || '').toUpperCase();
+      const db = (b.dayOfWeek || '').toUpperCase();
+      if (da !== db) return daysOfWeek.indexOf(da) - daysOfWeek.indexOf(db);
+      return (a.startTime || '').localeCompare(b.startTime || '');
+    });
+    for (const ts of sorted) {
+      const day = (ts.dayOfWeek || '').toUpperCase();
+      if (!map[day]) map[day] = [];
+      map[day].push(ts);
+    }
+    return map;
+  }, [timeSlots]);
+
+  const columnTimes = useMemo(() => {
+    const set = new Set();
+    for (const ts of timeSlots) {
+      if (!ts.isBreakSlot) set.add(ts.startTime);
+    }
+    return Array.from(set).sort();
+  }, [timeSlots]);
+
+  const classByKey = useMemo(() => {
+    const map = new Map();
+    for (const sc of timetable) {
+      const day = (sc.dayOfWeek || '').toUpperCase();
+      const key = `${day}|${sc.startTime}`;
+      map.set(key, sc);
+    }
+    return map;
+  }, [timetable]);
+
+  const slotMapByDay = useMemo(() => {
+    const map = {};
+    for (const d of daysOfWeek) map[d] = {};
+    for (const d of daysOfWeek) {
+      const arr = slotsByDay[d] || [];
+      for (const ts of arr) {
+        map[d][ts.startTime] = ts;
       }
-      grouped[day].push(cls);
-    });
-
-    // Sort each day's classes by start time
-    Object.keys(grouped).forEach((day) => {
-      grouped[day].sort((a, b) => {
-        const timeA = a.startTime || a.scheduledClass?.startTime || '';
-        const timeB = b.startTime || b.scheduledClass?.startTime || '';
-        if (timeA < timeB) return -1;
-        if (timeA > timeB) return 1;
-        return 0;
-      });
-    });
-
-    return grouped;
-  };
-
-  const groupedTimetable = groupByDay();
-  const daysOfWeek = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-
-  // Helper to extract course info from different object structures
-  const getCourseInfo = (item) => {
-    if (item.courseOffering?.course) {
-      return item.courseOffering.course.courseCode || 'N/A';
     }
-    if (item.course) {
-      return item.course.courseCode || 'N/A';
-    }
-    if (item.scheduledClass?.courseOffering?.course) {
-      return item.scheduledClass.courseOffering.course.courseCode || 'N/A';
-    }
-    return 'N/A';
-  };
+    return map;
+  }, [slotsByDay]);
 
-  const getFacultyInfo = (item) => {
-    if (item.courseOffering?.faculty) {
-      return `${item.courseOffering.faculty.firstName} ${item.courseOffering.faculty.lastName}`;
-    }
-    if (item.scheduledClass?.courseOffering?.faculty) {
-      return `${item.scheduledClass.courseOffering.faculty.firstName} ${item.scheduledClass.courseOffering.faculty.lastName}`;
-    }
-    return 'N/A';
-  };
+  const renderDayRow = (day) => {
+    const cells = [];
+    let i = 0;
+    while (i < columnTimes.length) {
+      const start = columnTimes[i];
+      const key = `${day}|${start}`;
+      const slot = slotMapByDay[day]?.[start];
+      const hasClass = classByKey.has(key);
 
-  const getRoomInfo = (item) => {
-    return item.room?.roomNumber || item.scheduledClass?.room?.roomNumber || 'N/A';
-  };
+      if (!slot) {
+        cells.push(
+          <td key={`${day}-${start}`} className="px-2 py-3 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-800">
+            —
+          </td>
+        );
+        i += 1;
+        continue;
+      }
 
-  const getTimeInfo = (item) => {
-    const startTime = item.startTime || item.scheduledClass?.startTime || '';
-    const endTime = item.endTime || item.scheduledClass?.endTime || '';
-    return startTime && endTime ? `${startTime} - ${endTime}` : 'N/A';
+      if (slot.isBreakSlot) {
+        let span = 1;
+        for (let j = i + 1; j < columnTimes.length; j++) {
+          const nextStart = columnTimes[j];
+          const next = slotMapByDay[day]?.[nextStart];
+          if (!next || !next.isBreakSlot) break;
+          if (slot.endTime !== next.startTime) break;
+          span += 1;
+          slot.endTime = next.endTime;
+        }
+        cells.push(
+          <td key={`${day}-break-${start}`} colSpan={span}
+            className="px-2 py-3 text-center text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800">
+            BREAK
+          </td>
+        );
+        i += span;
+        continue;
+      }
+
+      if (hasClass) {
+        const sc = classByKey.get(key);
+        let span = 1;
+        let prevEnd = slot.endTime;
+        for (let j = i + 1; j < columnTimes.length; j++) {
+          const ns = columnTimes[j];
+          const nslot = slotMapByDay[day]?.[ns];
+          const nk = `${day}|${ns}`;
+          const nsc = classByKey.get(nk);
+          if (!nslot || !nsc) break;
+          const sameOffering = nsc?.courseOffering?.id === sc?.courseOffering?.id;
+          const sameRoom = nsc?.room?.id === sc?.room?.id;
+          const contiguous = prevEnd === nslot.startTime;
+          if (!(sameOffering && sameRoom && contiguous)) break;
+          span += 1;
+          prevEnd = nslot.endTime;
+        }
+
+        cells.push(
+          <td key={`${day}-class-${start}`} colSpan={span}
+            className="align-top px-2 py-2 border border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/30"
+          >
+            <div className="text-xs font-semibold text-blue-800 dark:text-blue-200">
+              {sc?.courseOffering?.course?.courseCode || 'COURSE'}
+            </div>
+            <div className="text-[11px] text-gray-700 dark:text-gray-300">
+              {sc?.courseOffering?.section?.name || 'Section'} (Sem {sc?.courseOffering?.section?.semester || '-'})
+            </div>
+            <div className="text-[11px] text-gray-500 dark:text-gray-400">Room: {sc?.room?.roomNumber || '-'}</div>
+          </td>
+        );
+        i += span;
+        continue;
+      }
+
+      cells.push(
+        <td key={`${day}-empty-${start}`}
+          className="px-2 py-6 text-center text-xs border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        </td>
+      );
+      i += 1;
+    }
+    return cells;
   };
 
   if (!facultyId) {
@@ -136,71 +215,29 @@ const ViewMyTimetable = ({ facultyId }) => {
           No scheduled classes found. Please check back later or contact the administrator.
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              My Schedule ({timetable.length} classes)
-            </h3>
-          </div>
-          <div className="overflow-x-auto p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {daysOfWeek.map((day) => (
-                <div key={day} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                    {day}
-                  </h4>
-                  {groupedTimetable[day] && groupedTimetable[day].length > 0 ? (
-                    <div className="space-y-2">
-                      {groupedTimetable[day].map((cls, idx) => (
-                        <div
-                          key={cls.id || idx}
-                          className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded text-sm border border-blue-200 dark:border-blue-800"
-                        >
-                          <div className="font-medium text-gray-900 dark:text-white">
-                            {getCourseInfo(cls)}
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
-                            Room: {getRoomInfo(cls)}
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
-                            {getTimeInfo(cls)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">No classes</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Table View */}
-          <div className="overflow-x-auto mt-4">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Room</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Day</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {timetable.map((cls, idx) => (
-                  <tr key={cls.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{getCourseInfo(cls)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{getRoomInfo(cls)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {cls.dayOfWeek || cls.scheduledClass?.dayOfWeek || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{getTimeInfo(cls)}</td>
-                  </tr>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
+          <table className="min-w-[900px] w-full border-collapse">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase sticky left-0 bg-gray-50 dark:bg-gray-700 z-10">Day</th>
+                {columnTimes.map((t) => (
+                  <th key={`hdr-${t}`} className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
+                    {fmt(t)}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {daysOfWeek.map((day) => (
+                <tr key={`row-${day}`}>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800 z-10">
+                    {day}
+                  </td>
+                  {renderDayRow(day)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

@@ -8,9 +8,10 @@ public class LoginResponse {
     private Integer deptId;
     private String firstName;
     private String lastName;
+    private Boolean requiresPasswordReset;
 
     public LoginResponse(Long userId, String email, Integer role, Long facultyId, Integer deptId, String firstName,
-            String lastName) {
+            String lastName, Boolean requiresPasswordReset) {
         this.userId = userId;
         this.email = email;
         this.role = role;
@@ -18,6 +19,7 @@ public class LoginResponse {
         this.deptId = deptId;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.requiresPasswordReset = requiresPasswordReset;
     }
 
     // Getters and Setters
@@ -75,5 +77,13 @@ public class LoginResponse {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    public Boolean getRequiresPasswordReset() {
+        return requiresPasswordReset;
+    }
+
+    public void setRequiresPasswordReset(Boolean requiresPasswordReset) {
+        this.requiresPasswordReset = requiresPasswordReset;
     }
 }

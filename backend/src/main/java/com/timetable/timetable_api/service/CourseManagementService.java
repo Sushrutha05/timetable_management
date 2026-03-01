@@ -8,20 +8,20 @@ import com.timetable.timetable_api.model.DepartmentCourseId;
 import com.timetable.timetable_api.repository.CourseRepository;
 import com.timetable.timetable_api.repository.DepartmentCourseRepository;
 import com.timetable.timetable_api.repository.DepartmentRepository;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 @Service
 public class CourseManagementService {
@@ -40,7 +40,6 @@ public class CourseManagementService {
      */
     @Transactional
     public DepartmentCourse createCourse(CourseCreationRequest request) {
-        // Validation
         if (request.getDepartmentId() == null) {
             throw new RuntimeException("Department ID is required");
         }
@@ -48,20 +47,34 @@ public class CourseManagementService {
             throw new RuntimeException("Semester is required");
         }
 
-        // 1. Create/Save Course
-        Course newCourse = new Course();
-        newCourse.setCourseCode(request.getCourseCode());
-        newCourse.setCourseName(request.getCourseName());
-        newCourse.setCreditHours(request.getCreditHours());
-        newCourse.setCourseType(request.getCourseType());
+        // 1. Find existing course by code, or create a new one
+        Course course = courseRepository.findByCourseCode(request.getCourseCode())
+                .orElseGet(() -> {
+                    Course newCourse = new Course();
+                    newCourse.setCourseCode(request.getCourseCode());
+                    return newCourse;
+                });
 
-        Course savedCourse = courseRepository.save(newCourse);
+        // Always update mutable fields so a re-upload can fix names/hours
+        course.setCourseName(request.getCourseName());
+        course.setCreditHours(request.getCreditHours());
+        course.setCourseType(request.getCourseType() != null ? request.getCourseType() : "THEORY");
+        course.setLectureHours(request.getLectureHours() != null ? request.getLectureHours() : 0);
+        course.setTutorialHours(request.getTutorialHours() != null ? request.getTutorialHours() : 0);
+        course.setPracticalHours(request.getPracticalHours() != null ? request.getPracticalHours() : 0);
+        Course savedCourse = courseRepository.save(course);
 
         // 2. Resolve Department
         Department department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
 
-        // 3. Link Department and Course with Semester
+        // 3. Link Department + Course + Semester (skip if already linked)
+        DepartmentCourseId linkId = new DepartmentCourseId(department.getId(), savedCourse.getId());
+        if (departmentCourseRepository.existsById(linkId)) {
+            // Link already exists — return it as-is
+            return departmentCourseRepository.findById(linkId).get();
+        }
+
         DepartmentCourse deptCourse = new DepartmentCourse(department, savedCourse, request.getSemester());
         return departmentCourseRepository.save(deptCourse);
     }
@@ -87,6 +100,12 @@ public class CourseManagementService {
         existingCourse.setCourseName(request.getCourseName());
         existingCourse.setCreditHours(request.getCreditHours());
         existingCourse.setCourseType(request.getCourseType());
+        if (request.getLectureHours() != null)
+            existingCourse.setLectureHours(request.getLectureHours());
+        if (request.getTutorialHours() != null)
+            existingCourse.setTutorialHours(request.getTutorialHours());
+        if (request.getPracticalHours() != null)
+            existingCourse.setPracticalHours(request.getPracticalHours());
         courseRepository.save(existingCourse);
 
         // Update Semester if DepartmentId is provided to identify the link
@@ -114,53 +133,52 @@ public class CourseManagementService {
     }
 
     /**
-     * Deletes a course.
+     * Deletes a course and all its department links.
      */
     @Transactional
     public void deleteCourse(Long id) {
-        // If we delete the course, the link CASCADE might handles it?
-        // DepartmentCourse has @ManyToOne to Course.
-        // Try deleting course.
-        if (courseRepository.existsById(id)) {
-            // We might need to delete links first if no cascade
-            // departmentCourseRepository.deleteByCourseId(id); // If we add this method
-            // For now, try delete course.
-            courseRepository.deleteById(id);
-        } else {
+        if (!courseRepository.existsById(id)) {
             throw new RuntimeException("Course not found with ID: " + id);
         }
+        // Must delete department_courses links first to satisfy FK constraint
+        departmentCourseRepository.deleteByCourseId(id);
+        courseRepository.deleteById(id);
     }
 
     /**
      * Bulk create courses via CSV.
-     * Requires departmentId to be passed (e.g. from Admin context) or present in
-     * CSV.
+     * Uses Apache Commons CSV to correctly handle quoted multi-line field values.
      */
     @Transactional
     public List<DepartmentCourse> bulkCreateCourses(InputStream inputStream, Integer defaultDeptId) {
         List<DepartmentCourse> createdCourses = new ArrayList<>();
+        int rowNumber = 1;
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) {
-                throw new RuntimeException("CSV file is empty.");
-            }
+        try {
+            Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
 
-            Map<String, Integer> headerIndex = mapHeaderIndexes(headerLine);
-            validateRequiredHeaders(headerIndex);
+            // withFirstRecordAsHeader() maps column names automatically; trim() strips
+            // whitespace
+            CSVFormat format = CSVFormat.DEFAULT.builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setIgnoreHeaderCase(true)
+                    .setTrim(true)
+                    .setIgnoreEmptyLines(true)
+                    .build();
 
-            String line;
-            int rowNumber = 1;
-            while ((line = reader.readLine()) != null) {
+            for (CSVRecord record : format.parse(reader)) {
                 rowNumber++;
-                if (line.trim().isEmpty())
-                    continue;
 
-                String[] values = splitCsvLine(line);
-                CourseCreationRequest request = buildRequestFromRow(values, headerIndex, rowNumber);
+                // Validate required columns exist on first data row
+                if (!record.isMapped("coursecode") || !record.isMapped("coursename")
+                        || !record.isMapped("credithours")) {
+                    throw new RuntimeException(
+                            "Missing required CSV header(s). Expected: courseCode, courseName, creditHours");
+                }
 
-                // Use defaultDeptId if CSV doesn't have it (though CSV parser might not extract
-                // it if not column)
+                CourseCreationRequest request = buildRequestFromRecord(record, rowNumber);
+
                 if (request.getDepartmentId() == null) {
                     request.setDepartmentId(defaultDeptId);
                 }
@@ -194,67 +212,60 @@ public class CourseManagementService {
         return courseRepository.findById(id).orElse(null);
     }
 
-    private Map<String, Integer> mapHeaderIndexes(String headerLine) {
-        String[] headers = splitCsvLine(headerLine);
-        Map<String, Integer> index = new HashMap<>();
-        for (int i = 0; i < headers.length; i++) {
-            index.put(headers[i].trim().toLowerCase(Locale.ROOT), i);
+    private CourseCreationRequest buildRequestFromRecord(CSVRecord record, int rowNumber) {
+        CourseCreationRequest request = new CourseCreationRequest();
+
+        request.setCourseCode(record.get("coursecode").trim());
+        request.setCourseName(record.get("coursename").trim());
+
+        String creditHoursRaw = record.get("credithours").trim();
+        if (creditHoursRaw.isEmpty()) {
+            throw new RuntimeException("creditHours is required but was empty on row " + rowNumber);
         }
-        return index;
+        request.setCreditHours(parseInt(creditHoursRaw, "creditHours", rowNumber));
+
+        // courseType — default to THEORY if column missing or empty
+        String ct = getOpt(record, "coursetype");
+        request.setCourseType(ct.isEmpty() ? "THEORY" : ct.toUpperCase(Locale.ROOT));
+
+        // semester — default to 1
+        String semRaw = getOpt(record, "semester");
+        request.setSemester(semRaw.isEmpty() ? 1 : parseInt(semRaw, "semester", rowNumber));
+
+        // L-T-P hours — default to 0
+        String lRaw = getOpt(record, "lecturehours");
+        request.setLectureHours(lRaw.isEmpty() ? 0 : parseInt(lRaw, "lectureHours", rowNumber));
+
+        String tRaw = getOpt(record, "tutorialhours");
+        request.setTutorialHours(tRaw.isEmpty() ? 0 : parseInt(tRaw, "tutorialHours", rowNumber));
+
+        String pRaw = getOpt(record, "practicalhours");
+        request.setPracticalHours(pRaw.isEmpty() ? 0 : parseInt(pRaw, "practicalHours", rowNumber));
+
+        // departmentId — optional, falls back to URL param
+        String deptRaw = getOpt(record, "departmentid");
+        if (!deptRaw.isEmpty()) {
+            request.setDepartmentId(parseInt(deptRaw, "departmentId", rowNumber));
+        }
+
+        return request;
     }
 
-    private void validateRequiredHeaders(Map<String, Integer> headerIndex) {
-        // Enforce basic headers. 'semester' optional? default to 1?
-        List<String> requiredHeaders = List.of("coursecode", "coursename", "credithours");
-        for (String header : requiredHeaders) {
-            if (!headerIndex.containsKey(header)) {
-                throw new RuntimeException("Missing required CSV header: " + header);
-            }
-        }
+    /**
+     * Returns the trimmed value for an optional column, or empty string if not
+     * present.
+     */
+    private String getOpt(CSVRecord record, String key) {
+        return record.isMapped(key) ? record.get(key).trim() : "";
     }
 
-    private CourseCreationRequest buildRequestFromRow(String[] values, Map<String, Integer> headerIndex,
-            int rowNumber) {
+    /** Parses an int from a string with a friendly error message. */
+    private int parseInt(String value, String fieldName, int rowNumber) {
         try {
-            CourseCreationRequest request = new CourseCreationRequest();
-            request.setCourseCode(getValue(values, headerIndex, "coursecode"));
-            request.setCourseName(getValue(values, headerIndex, "coursename"));
-            request.setCreditHours(Integer.parseInt(getValue(values, headerIndex, "credithours")));
-
-            if (headerIndex.containsKey("coursetype")) {
-                request.setCourseType(getValue(values, headerIndex, "coursetype"));
-            }
-
-            if (headerIndex.containsKey("semester")) {
-                request.setSemester(Integer.parseInt(getValue(values, headerIndex, "semester")));
-            } else {
-                request.setSemester(1); // Default
-            }
-
-            // If CSV has departmentId
-            if (headerIndex.containsKey("departmentid")) {
-                request.setDepartmentId(Integer.parseInt(getValue(values, headerIndex, "departmentid")));
-            }
-
-            return request;
+            return Integer.parseInt(value.trim());
         } catch (NumberFormatException ex) {
-            throw new RuntimeException("Invalid number format on row " + rowNumber + ": " + ex.getMessage(), ex);
+            throw new RuntimeException(
+                    "Invalid number for '" + fieldName + "' on row " + rowNumber + " (got: \"" + value + "\")");
         }
-    }
-
-    private String getValue(String[] values, Map<String, Integer> headerIndex, String key) {
-        Integer idx = headerIndex.get(key);
-        if (idx == null || idx >= values.length)
-            return "";
-        String raw = values[idx];
-        String trimmed = raw == null ? "" : raw.trim();
-        if (trimmed.startsWith("\"") && trimmed.endsWith("\"") && trimmed.length() >= 2) {
-            trimmed = trimmed.substring(1, trimmed.length() - 1);
-        }
-        return trimmed;
-    }
-
-    private String[] splitCsvLine(String line) {
-        return line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
     }
 }

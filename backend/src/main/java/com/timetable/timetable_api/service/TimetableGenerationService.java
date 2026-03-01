@@ -27,6 +27,9 @@ public class TimetableGenerationService {
     @Autowired
     private ScheduledClassRepository scheduledClassRepository;
 
+    @Autowired
+    private TimetableMetadataRepository metadataRepository;
+
     /**
      * Advanced deterministic timetable generation with strict constraints.
      * Phases:
@@ -40,6 +43,12 @@ public class TimetableGenerationService {
     public List<ScheduledClass> generateTimetable() {
         // Phase A: Setup and data initialization
         scheduledClassRepository.deleteAll();
+
+        // Ensure timetable is switched to DRAFT mode natively upon modifying structure
+        TimetableMetadata status = metadataRepository.findByKey("STATUS")
+                .orElse(new TimetableMetadata("STATUS", "DRAFT"));
+        status.setValue("DRAFT");
+        metadataRepository.save(status);
 
         List<CourseOffering> allOfferings = offeringRepository.findAll();
         if (allOfferings.isEmpty()) {
@@ -71,6 +80,7 @@ public class TimetableGenerationService {
 
         // Workload tracking
         Map<Long, Integer> facultyCreditHours = new HashMap<>(); // ID -> hours
+        Map<String, Integer> sectionDailyHours = new HashMap<>(); // "SectionID_DAY" -> hours
         Set<String> occupied = new HashSet<>(); // Keys for collision detection
         List<ScheduledClass> created = new ArrayList<>();
 
@@ -97,11 +107,21 @@ public class TimetableGenerationService {
                 if (c == null)
                     continue;
 
-                // 1. Schedule Practicals (Block of 3 or specific hours)
+                // 1. Schedule Practicals
                 int pHours = Optional.ofNullable(c.getPracticalHours()).orElse(0);
                 if (pHours > 0) {
-                    boolean scheduled = scheduleComponent(offering, "PRACTICAL", pHours, 3, allRooms, slotsByDay,
-                            occupied, facultyCreditHours, created);
+                    // "For integrated courses the lab is two block, for skill enhancement and lab
+                    // only courses it is 3 hours block and 1 hour theory"
+                    int practicalBlockSize = 2; // Default for integrated
+                    String cType = courseType(c);
+                    if ("SKILL_ENHANCEMENT".equalsIgnoreCase(cType) || "LAB_ONLY".equalsIgnoreCase(cType)
+                            || "LAB".equalsIgnoreCase(cType)) {
+                        practicalBlockSize = 3;
+                    }
+
+                    boolean scheduled = scheduleComponent(offering, "PRACTICAL", pHours, practicalBlockSize, allRooms,
+                            slotsByDay,
+                            occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException("Failed to schedule Practical for " + c.getCourseCode());
                 }
@@ -114,7 +134,7 @@ public class TimetableGenerationService {
                         lHours = c.getCreditHours();
                     }
                     boolean scheduled = scheduleComponent(offering, "LECTURE", lHours, 1, allRooms, slotsByDay,
-                            occupied, facultyCreditHours, created);
+                            occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException("Failed to schedule Lecture for " + c.getCourseCode());
                 }
@@ -123,7 +143,7 @@ public class TimetableGenerationService {
                 int tHours = Optional.ofNullable(c.getTutorialHours()).orElse(0);
                 if (tHours > 0) {
                     boolean scheduled = scheduleComponent(offering, "TUTORIAL", tHours, 1, allRooms, slotsByDay,
-                            occupied, facultyCreditHours, created);
+                            occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException("Failed to schedule Tutorial for " + c.getCourseCode());
                 }
@@ -142,22 +162,23 @@ public class TimetableGenerationService {
             Map<String, List<TimeSlot>> slotsByDay,
             Set<String> occupied,
             Map<Long, Integer> facultyCreditHours,
+            Map<String, Integer> sectionDailyHours,
             List<ScheduledClass> created) {
         int scheduledCount = 0;
         int neededBlocks = (int) Math.ceil((double) totalHours / blockSize);
 
-        // Try to spread across days
         List<String> days = new ArrayList<>(orderedDays());
-
-        // For simple round-robin spreading
-        int dayIndex = 0;
 
         for (int b = 0; b < neededBlocks; b++) {
             boolean placed = false;
 
-            // Try every day starting from current offset to spread load
-            for (int d = 0; d < days.size(); d++) {
-                String day = days.get((dayIndex + d) % days.size());
+            // Sort days by minimum hours assigned for this section (US-20: uniform
+            // distribution)
+            List<String> sortedDays = new ArrayList<>(days);
+            sortedDays.sort(Comparator
+                    .comparingInt(d -> sectionDailyHours.getOrDefault(offering.getSection().getId() + "_" + d, 0)));
+
+            for (String day : sortedDays) {
                 List<TimeSlot> daySlots = slotsByDay.getOrDefault(day, List.of());
 
                 // Try slots
@@ -166,12 +187,19 @@ public class TimetableGenerationService {
                     if (!isContiguous(block))
                         continue;
 
-                    // Optimization: For Theory (size 1), strict check for consecutive faculty
-                    // classes
-                    if (blockSize == 1) {
-                        if (hasConsecutiveFacultyClass(offering.getFaculty(), day, block.get(0), occupied)) {
-                            continue;
-                        }
+                    // US-22: Skip lunch and short breaks based on semester
+                    if (isBreakForSemester(block, offering.getSection().getSemester())) {
+                        continue;
+                    }
+
+                    // US-21: Block Saturday slots after lunch for club activities
+                    if (isSaturdayAfterLunch(block)) {
+                        continue;
+                    }
+
+                    // US-19: Strict check for consecutive faculty classes (gap of 55 minutes)
+                    if (hasConsecutiveFacultyClass(offering.getFaculty(), day, block, occupied, daySlots)) {
+                        continue;
                     }
 
                     // Try Rooms
@@ -188,6 +216,7 @@ public class TimetableGenerationService {
                                 occupy(offering, room, slot, occupied);
                             }
                             incrementHours(offering.getFaculty(), facultyCreditHours, blockSize);
+                            sectionDailyHours.merge(offering.getSection().getId() + "_" + day, blockSize, Integer::sum);
                             placed = true;
                             break;
                         }
@@ -196,7 +225,6 @@ public class TimetableGenerationService {
                         break;
                 }
                 if (placed) {
-                    dayIndex = (dayIndex + d + 1) % days.size(); // Move to next day for next block
                     break;
                 }
             }
@@ -207,62 +235,31 @@ public class TimetableGenerationService {
         return scheduledCount == neededBlocks;
     }
 
-    private boolean hasConsecutiveFacultyClass(Faculty faculty, String day, TimeSlot currentSlot,
-            Set<String> occupied) {
-        // Check slot before
-        // We need to know strict time adjacency.
-        // Simplification: Check if FACULTY_id_DAY_startTime exists where startTime is
-        // current.start - 1 hour?
-        // Better: Iterate all slots for the day? No, inefficient.
-        // 'occupied' set contains: RESOURCE_ID_DAY_TIME
-        // We can reconstruct keys if we know the times.
-
-        // Assuming hourly slots (or whatever the repo has).
-        // Let's rely on TimeSlotRepository to know "previous" and "next" slots,
-        // but we don't have that map easily here without querying.
-        // Given 'currentSlot' (TimeSlot entity), we can check 'occupied' if we assumed
-        // standard duration.
-        // BUT: Slots might be 9:00-10:00, 10:00-11:00.
-        // Key is FACULTY_123_MONDAY_09:00.
-
+    private boolean hasConsecutiveFacultyClass(Faculty faculty, String day, List<TimeSlot> block, Set<String> occupied,
+            List<TimeSlot> daySlots) {
         long fid = faculty.getId();
 
-        // Look for any occupied key for this faculty on this day
-        // This is a bit disjointed because 'occupied' is a Set of strings.
-        // We need to parse time? Or keys?
-        // Optimisation: We can just check the specific Previous/Next times if we know
-        // them.
-        // 'currentSlot' has startTime and endTime.
+        TimeSlot firstSlot = block.get(0);
+        TimeSlot lastSlot = block.get(block.size() - 1);
 
-        // Check Previous: Key with endTime == currentSlot.startTime ?
-        // Wait, 'occupied' keys use StartTime.
-        // So for the *previous* class, its EndTime would be our StartTime.
-        // But we store keys by StartTime.
-        // So we need to find a slot whose EndTime == currentSlot.StartTime.
-        // And check if that slot's StartTime key is in 'occupied'.
-        // This requires knowledge of all slots. 'slotsByDay' has them.
+        int firstIdx = daySlots.indexOf(firstSlot);
+        int lastIdx = daySlots.indexOf(lastSlot);
 
-        List<TimeSlot> daySlots = timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc().stream()
-                .filter(ts -> normalizeDay(ts.getDayOfWeek()).equals(day))
-                .collect(Collectors.toList());
-        // ^ inefficient to query inside loop. 'slotsByDay' is passed to
-        // scheduleComponent. Use that.
+        // Check the slot immediately preceding the block
+        if (firstIdx > 0) {
+            TimeSlot prev = daySlots.get(firstIdx - 1);
+            if (occupied.contains(key("FACULTY", fid, day, prev.getStartTime())))
+                return true;
+        }
 
-        // In 'scheduleComponent', we have 'slotsByDay'. Pass daySlots or look it up.
-        // We really only need to check if the faculty is busy in the *adjacent* slots.
+        // Check the slot immediately following the block
+        if (lastIdx >= 0 && lastIdx < daySlots.size() - 1) {
+            TimeSlot next = daySlots.get(lastIdx + 1);
+            if (occupied.contains(key("FACULTY", fid, day, next.getStartTime())))
+                return true;
+        }
 
-        // 1. Previous Slot?
-        // Find slot S where S.endTime == currentSlot.startTime.
-        // If occupied.contains(FACULTY_id_DAY_S.startTime) -> return true.
-
-        // 2. Next Slot?
-        // Find slot S where S.startTime == currentSlot.endTime.
-        // If occupied.contains(FACULTY_id_DAY_S.startTime) -> return true.
-
-        // We can do this efficiently if we passed slotsByDay.get(day).
-        // I'll assume I can access 'slotsByDay' or iterate 'occupied'.
-        // Actually, I can construct the keys if I iterate the day's slots.
-        return false; // implemented properly below with helper
+        return false;
     }
 
     private boolean roomTypeMatches(Room room, String type) {
@@ -354,7 +351,7 @@ public class TimetableGenerationService {
 
     private boolean isContiguous(List<TimeSlot> block) {
         if (block.size() < 2)
-            return false;
+            return true;
         String day = normalizeDay(block.get(0).getDayOfWeek());
         for (int i = 0; i < block.size() - 1; i++) {
             TimeSlot a = block.get(i);
@@ -369,6 +366,53 @@ public class TimetableGenerationService {
                 return false;
         }
         return true;
+    }
+
+    private boolean isBreakForSemester(List<TimeSlot> block, Integer semester) {
+        if (semester == null)
+            return false;
+        for (TimeSlot slot : block) {
+            LocalTime start = slot.getStartTime();
+            LocalTime end = slot.getEndTime();
+
+            // Sem 3,4 breaks: 10:50-11:10 and 13:00-13:55
+            if (semester == 3 || semester == 4) {
+                if (isOverlapping(start, end, LocalTime.of(10, 50), LocalTime.of(11, 10)))
+                    return true;
+                if (isOverlapping(start, end, LocalTime.of(13, 00), LocalTime.of(13, 55)))
+                    return true;
+            }
+
+            // Sem 5,6,7 breaks: 09:55-10:15 and 12:05-13:00
+            if (semester >= 5 && semester <= 7) {
+                if (isOverlapping(start, end, LocalTime.of(9, 55), LocalTime.of(10, 15)))
+                    return true;
+                if (isOverlapping(start, end, LocalTime.of(12, 05), LocalTime.of(13, 00)))
+                    return true;
+            }
+
+            // Generic lunch break fallback
+            if (semester < 3 || semester > 7) {
+                if (isOverlapping(start, end, LocalTime.of(13, 00), LocalTime.of(13, 55)))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isOverlapping(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
+        return start1.isBefore(end2) && start2.isBefore(end1);
+    }
+
+    private boolean isSaturdayAfterLunch(List<TimeSlot> block) {
+        for (TimeSlot slot : block) {
+            if ("SATURDAY".equalsIgnoreCase(normalizeDay(slot.getDayOfWeek()))) {
+                if (!slot.getStartTime().isBefore(LocalTime.of(13, 0))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean roomTypeMatches(Room room, Course course) {

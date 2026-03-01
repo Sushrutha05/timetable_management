@@ -38,11 +38,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/**").permitAll()
                         // Explicitly allow all GET requests to our API endpoints
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                        // Explicitly allow all PUT requests (updates/edits)
+                        .requestMatchers(HttpMethod.PUT, "/api/**").permitAll()
+                        // Explicitly allow all PATCH requests
+                        .requestMatchers(HttpMethod.PATCH, "/api/**").permitAll()
                         // Explicitly allow all DELETE requests
                         .requestMatchers(HttpMethod.DELETE, "/api/**").permitAll()
                         // Any other request requires authentication
-                        .anyRequest().authenticated()
-                );
+                        .anyRequest().authenticated());
 
         return http.build();
     }

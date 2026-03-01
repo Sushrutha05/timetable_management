@@ -23,7 +23,12 @@ async function fetchAPI(endpoint, options = {}) {
     return null;
   }
 
-  return response.json();
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  } else {
+    return response.text();
+  }
 }
 
 // Admin APIs - Faculty
@@ -74,8 +79,10 @@ export const courseAPI = {
     method: 'DELETE',
   }),
   bulkUpload: (formData, deptId) => {
-    // Append deptId to URL or FormData? Controller expects Query Param.
-    return fetchAPI(`/api/admin/course/upload?deptId=${deptId}`, {
+    const url = deptId
+      ? `/api/admin/course/upload?deptId=${deptId}`
+      : '/api/admin/course/upload';
+    return fetchAPI(url, {
       method: 'POST',
       body: formData,
     });
@@ -139,7 +146,10 @@ export const designationAPI = {
 
 // Admin APIs - Time Slots
 export const timeSlotAPI = {
-  getAll: () => fetchAPI('/api/admin/timeslot'),
+  getAll: (semesterGroup) => {
+    const params = semesterGroup ? `?semesterGroup=${semesterGroup}` : '';
+    return fetchAPI(`/api/admin/timeslot${params}`);
+  },
   create: (data) => fetchAPI('/api/admin/timeslot', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -168,6 +178,17 @@ export const offeringAPI = {
 // Admin APIs - Departments
 export const departmentAPI = {
   getAll: () => fetchAPI('/api/admin/department'),
+  create: (data) => fetchAPI('/api/admin/department', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id, data) => fetchAPI(`/api/admin/department/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id) => fetchAPI(`/api/admin/department/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 // Admin APIs - Timetable
@@ -176,6 +197,16 @@ export const timetableAPI = {
     method: 'POST',
   }),
   getFull: () => fetchAPI('/api/admin/timetable'),
+  getStatus: () => fetchAPI('/api/admin/timetable/status'),
+  publish: () => fetchAPI('/api/admin/timetable/publish', {
+    method: 'POST',
+  }),
+  getForSection: (sectionId) => fetchAPI(`/api/admin/timetable/section/${sectionId}`),
+  getForFaculty: (facultyId) => fetchAPI(`/api/admin/timetable/faculty/${facultyId}`),
+  updateSlot: (data) => fetchAPI('/api/admin/timetable/update-slot', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };
 
 // Faculty APIs
@@ -194,6 +225,10 @@ export const authAPI = {
   login: (credentials) => fetchAPI('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
+  }),
+  resetPassword: (data) => fetchAPI('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
 };
 

@@ -22,12 +22,17 @@ public class TimeSlotService {
         timeSlot.setStartTime(request.getStartTime());
         timeSlot.setEndTime(request.getEndTime());
         timeSlot.setBreakSlot(request.isBreak());
+        timeSlot.setSemesterGroup(request.getSemesterGroup() != null ? request.getSemesterGroup() : "SEM_3_4");
 
         return timeSlotRepository.save(timeSlot);
     }
 
     public List<TimeSlot> getAllTimeSlots() {
         return timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc();
+    }
+
+    public List<TimeSlot> getTimeSlotsBySemesterGroup(String semesterGroup) {
+        return timeSlotRepository.findBySemesterGroupOrderByDayOfWeekAscStartTimeAsc(semesterGroup);
     }
 
     public TimeSlot updateTimeSlot(Long id, TimeSlotRequest request) {
@@ -39,6 +44,9 @@ public class TimeSlotService {
         existing.setStartTime(request.getStartTime());
         existing.setEndTime(request.getEndTime());
         existing.setBreakSlot(request.isBreak());
+        if (request.getSemesterGroup() != null) {
+            existing.setSemesterGroup(request.getSemesterGroup());
+        }
 
         return timeSlotRepository.save(existing);
     }
@@ -64,4 +72,3 @@ public class TimeSlotService {
         }
     }
 }
-
