@@ -145,8 +145,6 @@ public class CourseManagementService {
         courseRepository.deleteById(id);
     }
 
-    }
-
     /**
      * Bulk create courses via CSV.
      * Uses Apache Commons CSV to correctly handle quoted multi-line field values.
