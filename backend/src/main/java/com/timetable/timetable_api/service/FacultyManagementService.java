@@ -41,6 +41,8 @@ public class FacultyManagementService {
 
     /**
      * Creates a new Faculty member along with their User account.
+     * Full upsert: finds existing user by email, and existing faculty by user_id,
+     * so re-uploading the same CSV never violates uq_user_email or uq_faculty_user.
      */
     @Transactional
     public Faculty createFaculty(FacultyCreationRequest request) {
@@ -49,12 +51,10 @@ public class FacultyManagementService {
         Department department = resolveDepartment(request.getDepartmentId());
         DesignationConstraint designation = resolveDesignation(request.getDesignation());
 
-        // Find or create the user account — prevents duplicate email errors on
-        // re-upload
+        // 1. Find or create the User account
         User existingUser = userRepository.findByEmail(request.getEmail().trim());
         User savedUser;
         if (existingUser != null) {
-            // User already exists: update department linkage if needed
             existingUser.setDepartmentId(department.getId());
             savedUser = userRepository.save(existingUser);
         } else {
@@ -68,6 +68,18 @@ public class FacultyManagementService {
             newUser.setRole(2); // 2 = FACULTY role
             newUser.setDepartmentId(department.getId());
             savedUser = userRepository.save(newUser);
+        }
+
+        // 2. Find or create the Faculty profile linked to this user
+        Faculty existingFaculty = facultyRepository.findByUserId(savedUser.getId());
+        if (existingFaculty != null) {
+            // Faculty already exists — update fields in place
+            existingFaculty.setDepartment(department);
+            existingFaculty.setDesignationConstraint(designation);
+            existingFaculty.setFirstName(request.getFirstName());
+            existingFaculty.setLastName(request.getLastName());
+            existingFaculty.setMiddleInitial(request.getMiddleInitial());
+            return facultyRepository.save(existingFaculty);
         }
 
         Faculty newFaculty = new Faculty();

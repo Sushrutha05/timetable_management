@@ -530,7 +530,7 @@ const ManageFaculty = ({ deptId }) => {
                         {faculty.firstName} {faculty.middleInitial} {faculty.lastName}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.user?.email || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.designation || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.designationConstraint?.designation || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.department?.name || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex gap-2">
