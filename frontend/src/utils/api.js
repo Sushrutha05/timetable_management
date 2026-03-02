@@ -177,6 +177,9 @@ export const offeringAPI = {
   delete: (id) => fetchAPI(`/api/admin/offering/${id}`, {
     method: 'DELETE',
   }),
+  autoGenerate: (deptId) => fetchAPI(`/api/admin/offering/auto-generate?deptId=${deptId}`, {
+    method: 'POST',
+  }),
 };
 
 // Admin APIs - Departments
