@@ -35,6 +35,8 @@ const ManageFaculty = ({ deptId }) => {
   });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [randomizing, setRandomizing] = useState(false);
+  const [randomMessage, setRandomMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     loadFaculty();
@@ -195,17 +197,61 @@ const ManageFaculty = ({ deptId }) => {
     }
   };
 
+  const handleRandomizePreferences = async () => {
+    const targetDeptId = deptId || formData.departmentId;
+    if (!targetDeptId) {
+      setRandomMessage({ type: 'error', text: 'No department selected. Cannot randomize.' });
+      return;
+    }
+    if (!window.confirm(
+      'This will REPLACE all existing course preferences for every faculty in this department with random ones. Continue?'
+    )) return;
+
+    setRandomizing(true);
+    setRandomMessage({ type: '', text: '' });
+    try {
+      const result = await facultyAPI.randomizePreferences(targetDeptId);
+      setRandomMessage({
+        type: 'success',
+        text: `Done! Created ${result.totalPreferencesCreated} preference entries across all faculty.`,
+      });
+    } catch (error) {
+      setRandomMessage({ type: 'error', text: `Randomize failed: ${error.message}` });
+    } finally {
+      setRandomizing(false);
+    }
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-2">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Manage Faculty</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-        >
-          {showForm ? 'Cancel' : 'Add New Faculty'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleRandomizePreferences}
+            disabled={randomizing}
+            title="Randomly assign up to 5 course preferences for every faculty in this department"
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-md transition-colors"
+          >
+            {randomizing ? '⏳ Randomizing…' : '🎲 Randomize Preferences'}
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            {showForm ? 'Cancel' : 'Add New Faculty'}
+          </button>
+        </div>
       </div>
+
+      {randomMessage.text && (
+        <div className={`mb-4 px-4 py-3 rounded-md text-sm font-medium ${randomMessage.type === 'success'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+          {randomMessage.text}
+        </div>
+      )}
 
       {message.text && (
         <div

@@ -56,6 +56,10 @@ export const facultyAPI = {
       body: formData,
     });
   },
+  randomizePreferences: (deptId) =>
+    fetchAPI(`/api/faculty/randomize-preferences?deptId=${deptId}`, {
+      method: 'POST',
+    }),
 };
 
 // Admin APIs - Courses

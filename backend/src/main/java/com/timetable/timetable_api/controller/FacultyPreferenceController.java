@@ -71,6 +71,23 @@ public class FacultyPreferenceController {
     }
 
     /**
+     * One-click: randomize preferences for ALL faculty in a department.
+     * Endpoint: POST /api/faculty/randomize-preferences?deptId=X
+     */
+    @PostMapping("/randomize-preferences")
+    public ResponseEntity<?> randomizePreferences(@RequestParam Integer deptId) {
+        try {
+            int count = preferenceService.randomizePreferencesForDepartment(deptId);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "message", "Randomized preferences for department " + deptId,
+                    "totalPreferencesCreated", count));
+        } catch (Exception e) {
+            return new ResponseEntity<>(java.util.Map.of("error", e.getMessage()),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
      * Get the timetable for a specific faculty member.
      * Endpoint: GET /api/faculty/{facultyId}/timetable
      */
