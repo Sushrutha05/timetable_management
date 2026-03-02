@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { courseAPI } from '../../utils/api';
 import courseTemplate from '../common/course_template.csv';
+import cache from '../../utils/cache';
+import useSortableTable from '../../hooks/useSortableTable';
 
 const ManageCourses = ({ deptId }) => {
   const [courses, setCourses] = useState([]);
@@ -44,15 +46,51 @@ const ManageCourses = ({ deptId }) => {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
+  // Helper to extract display data — declared here so displayRows can use it
+  const getDisplayData = (item) => {
+    if (item.course) {
+      return {
+        id: item.course.id,
+        courseCode: item.course.courseCode,
+        courseName: item.course.courseName,
+        creditHours: item.course.creditHours,
+        courseType: item.course.courseType || '-',
+        lectureHours: item.course.lectureHours ?? 0,
+        tutorialHours: item.course.tutorialHours ?? 0,
+        practicalHours: item.course.practicalHours ?? 0,
+        semester: item.semester,
+      };
+    } else {
+      return {
+        id: item.id,
+        courseCode: item.courseCode,
+        courseName: item.courseName,
+        creditHours: item.creditHours,
+        courseType: item.courseType || '-',
+        lectureHours: item.lectureHours ?? 0,
+        tutorialHours: item.tutorialHours ?? 0,
+        practicalHours: item.practicalHours ?? 0,
+        semester: '-',
+      };
+    }
+  };
+
+  // Derive flat display rows so the sort hook always sees the same shape
+  const displayRows = courses.map((item) => getDisplayData(item));
+  const { sortedData, handleSort, sortIcon } = useSortableTable(displayRows, 'courseCode');
+
   useEffect(() => {
     loadCourses();
   }, [deptId, semesterFilter]);
 
-  const loadCourses = async () => {
+  const cacheKey = () => `courses-${deptId || 'all'}-${semesterFilter || 'all'}`;
+
+  const loadCourses = async (forceRefresh = false) => {
     setLoading(true);
     try {
-      // Pass deptId and semester filter
-      const data = await courseAPI.getAll(deptId, semesterFilter || null);
+      const key = cacheKey();
+      if (forceRefresh) cache.invalidate(key);
+      const data = await cache.getOrFetch(key, () => courseAPI.getAll(deptId, semesterFilter || null));
       setCourses(data);
       setMessage({ type: '', text: '' });
     } catch (error) {
@@ -82,7 +120,7 @@ const ManageCourses = ({ deptId }) => {
       setMessage({ type: 'success', text: 'Course created successfully!' });
       setShowForm(false);
       setFormData({ courseCode: '', courseName: '', creditHours: '', semester: '1', courseType: 'THEORY', lectureHours: '', tutorialHours: '', practicalHours: '' });
-      loadCourses();
+      loadCourses(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -119,7 +157,7 @@ const ManageCourses = ({ deptId }) => {
       setBulkFile(null);
       setBulkFileName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      loadCourses();
+      loadCourses(true);
     } catch (error) {
       setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
     } finally {
@@ -173,7 +211,7 @@ const ManageCourses = ({ deptId }) => {
       setSaving(false);
       setEditingId(null);
       setMessage({ type: 'success', text: 'Course updated successfully!' });
-      loadCourses();
+      loadCourses(true);
     } catch (error) {
       setSaving(false);
       setMessage({ type: 'error', text: `Update failed: ${error.message}` });
@@ -186,7 +224,7 @@ const ManageCourses = ({ deptId }) => {
     setDeletingId(id);
     try {
       await courseAPI.delete(id);
-      loadCourses();
+      loadCourses(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Delete failed: ${error.message}` });
     } finally {
@@ -194,34 +232,7 @@ const ManageCourses = ({ deptId }) => {
     }
   };
 
-  // Helper to extract display data
-  const getDisplayData = (item) => {
-    if (item.course) {
-      return {
-        id: item.course.id,
-        courseCode: item.course.courseCode,
-        courseName: item.course.courseName,
-        creditHours: item.course.creditHours,
-        courseType: item.course.courseType || '-',
-        lectureHours: item.course.lectureHours ?? 0,
-        tutorialHours: item.course.tutorialHours ?? 0,
-        practicalHours: item.course.practicalHours ?? 0,
-        semester: item.semester,
-      };
-    } else {
-      return {
-        id: item.id,
-        courseCode: item.courseCode,
-        courseName: item.courseName,
-        creditHours: item.creditHours,
-        courseType: item.courseType || '-',
-        lectureHours: item.lectureHours ?? 0,
-        tutorialHours: item.tutorialHours ?? 0,
-        practicalHours: item.practicalHours ?? 0,
-        semester: '-',
-      };
-    }
-  };
+  // (getDisplayData moved above useSortableTable)
 
   return (
     <div>
@@ -520,12 +531,12 @@ const ManageCourses = ({ deptId }) => {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Sem</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Credits</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">#</th>
+                  <th onClick={() => handleSort('courseCode')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Code{sortIcon('courseCode')}</th>
+                  <th onClick={() => handleSort('courseName')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Name{sortIcon('courseName')}</th>
+                  <th onClick={() => handleSort('semester')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Sem{sortIcon('semester')}</th>
+                  <th onClick={() => handleSort('courseType')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Type{sortIcon('courseType')}</th>
+                  <th onClick={() => handleSort('creditHours')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Credits{sortIcon('creditHours')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">L-T-P</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
@@ -533,16 +544,17 @@ const ManageCourses = ({ deptId }) => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {courses.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan="8" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
                       No courses found
                     </td>
                   </tr>
                 ) : (
-                  courses.map((item) => {
-                    const data = getDisplayData(item);
+                  sortedData.map((data, idx) => {
+                    // Find the original item for edit/delete callbacks
+                    const item = courses.find((c) => (c.course ? c.course.id : c.id) === data.id) || data;
                     return (
                       <tr key={data.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
                         <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">{data.courseCode}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.courseName}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{data.semester}</td>
