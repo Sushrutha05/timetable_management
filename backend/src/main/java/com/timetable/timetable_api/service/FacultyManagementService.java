@@ -12,6 +12,7 @@ import com.timetable.timetable_api.repository.UserRepository;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,9 @@ public class FacultyManagementService {
     @Autowired
     private DesignationConstraintRepository designationRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     /**
      * Creates a new Faculty member along with their User account.
      * Full upsert: finds existing user by email, and existing faculty by user_id,
@@ -58,12 +62,12 @@ public class FacultyManagementService {
             existingUser.setDepartmentId(department.getId());
             savedUser = userRepository.save(existingUser);
         } else {
+            String rawPassword = (request.getPassword() != null && !request.getPassword().isEmpty())
+                    ? request.getPassword()
+                    : "Welcome@123";
             User newUser = new User();
             newUser.setEmail(request.getEmail().trim());
-            newUser.setPasswordHash(
-                    request.getPassword() != null && !request.getPassword().isEmpty()
-                            ? request.getPassword()
-                            : "Welcome@123");
+            newUser.setPasswordHash(passwordEncoder.encode(rawPassword));
             newUser.setRequiresPasswordReset(true);
             newUser.setRole(2); // 2 = FACULTY role
             newUser.setDepartmentId(department.getId());
@@ -115,7 +119,7 @@ public class FacultyManagementService {
         }
         // Only update password when the caller explicitly provides a non-blank value
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            linkedUser.setPasswordHash(request.getPassword());
+            linkedUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
         linkedUser.setDepartmentId(department.getId());
         userRepository.save(linkedUser);
