@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { offeringAPI, facultyAPI, courseAPI, sectionAPI } from '../../utils/api';
+import cache from '../../utils/cache';
+import useSortableTable from '../../hooks/useSortableTable';
 
 const ManageOfferings = ({ deptId }) => {
   const [offerings, setOfferings] = useState([]);
@@ -17,18 +19,21 @@ const ManageOfferings = ({ deptId }) => {
   const [autoGenerating, setAutoGenerating] = useState(false);
   const [autoMessage, setAutoMessage] = useState({ type: '', text: '' });
 
+  const { sortedData: sortedOfferings, handleSort, sortIcon } = useSortableTable(offerings, 'course.courseCode');
+
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     setLoading(true);
     try {
+      if (forceRefresh) cache.invalidateMany('offerings', 'offering-faculty', 'offering-courses', 'offering-sections');
       const [offeringsData, facultyData, coursesData, sectionsData] = await Promise.all([
-        offeringAPI.getAll(),
-        facultyAPI.getAll(),
-        courseAPI.getAll(),
-        sectionAPI.getAll(),
+        cache.getOrFetch('offerings', () => offeringAPI.getAll()),
+        cache.getOrFetch('offering-faculty', () => facultyAPI.getAll()),
+        cache.getOrFetch('offering-courses', () => courseAPI.getAll()),
+        cache.getOrFetch('offering-sections', () => sectionAPI.getAll()),
       ]);
       setOfferings(offeringsData);
       setFacultyList(facultyData);
@@ -57,7 +62,7 @@ const ManageOfferings = ({ deptId }) => {
       setMessage({ type: 'success', text: 'Course offering created successfully!' });
       setShowForm(false);
       setFormData({ courseId: '', facultyId: '', sectionId: '' });
-      loadData();
+      loadData(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -76,7 +81,7 @@ const ManageOfferings = ({ deptId }) => {
     try {
       await offeringAPI.delete(id);
       setMessage({ type: 'success', text: 'Offering deleted successfully!' });
-      loadData();
+      loadData(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -107,7 +112,7 @@ const ManageOfferings = ({ deptId }) => {
         type: 'success',
         text: `Done! Created ${result.created} offering(s), skipped ${result.skipped} (already existed or no faculty).`,
       });
-      loadData();
+      loadData(true);
     } catch (error) {
       setAutoMessage({ type: 'error', text: `Auto-generate failed: ${error.message}` });
     } finally {
@@ -239,10 +244,10 @@ const ManageOfferings = ({ deptId }) => {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Faculty</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Section</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">#</th>
+                  <th onClick={() => handleSort('course.courseCode')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Course{sortIcon('course.courseCode')}</th>
+                  <th onClick={() => handleSort('faculty.lastName')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Faculty{sortIcon('faculty.lastName')}</th>
+                  <th onClick={() => handleSort('section.name')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Section{sortIcon('section.name')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -254,9 +259,9 @@ const ManageOfferings = ({ deptId }) => {
                     </td>
                   </tr>
                 ) : (
-                  offerings.map((offering) => (
+                  sortedOfferings.map((offering, idx) => (
                     <tr key={offering.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{offering.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         {offering.course?.courseCode} - {offering.course?.courseName}
                       </td>

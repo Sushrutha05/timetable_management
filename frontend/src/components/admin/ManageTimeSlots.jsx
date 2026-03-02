@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { timeSlotAPI } from '../../utils/api';
+import cache from '../../utils/cache';
 
 const SEMESTER_GROUPS = [
   { key: 'SEM_3_4', label: 'Sem 3 & 4' },
@@ -35,10 +36,12 @@ const ManageTimeSlots = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
 
-  const loadTimeSlots = useCallback(async () => {
+  const loadTimeSlots = useCallback(async (forceRefresh = false) => {
     setLoading(true);
+    const cacheKey = `timeslots-${activeGroup}`;
     try {
-      const data = await timeSlotAPI.getAll(activeGroup);
+      if (forceRefresh) cache.invalidate(cacheKey);
+      const data = await cache.getOrFetch(cacheKey, () => timeSlotAPI.getAll(activeGroup));
       setTimeSlots(data);
       setMessage({ type: '', text: '' });
     } catch (error) {
@@ -89,7 +92,7 @@ const ManageTimeSlots = () => {
       setMessage({ type: 'success', text: 'Time slot created successfully!' });
       setShowForm(false);
       setFormData({ dayOfWeek: 'MONDAY', startTime: '', endTime: '', isBreak: false, semesterGroup: activeGroup });
-      loadTimeSlots();
+      loadTimeSlots(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -103,6 +106,7 @@ const ManageTimeSlots = () => {
     setDeletingId(id);
     try {
       await timeSlotAPI.delete(id);
+      cache.invalidate(`timeslots-${activeGroup}`);
       setTimeSlots((prev) => prev.filter((s) => s.id !== id));
       setMessage({ type: 'success', text: 'Time slot deleted.' });
     } catch (error) {
@@ -136,7 +140,7 @@ const ManageTimeSlots = () => {
       });
       setEditingId(null);
       setMessage({ type: 'success', text: 'Time slot updated.' });
-      loadTimeSlots();
+      loadTimeSlots(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -175,8 +179,8 @@ const ManageTimeSlots = () => {
             key={g.key}
             onClick={() => setActiveGroup(g.key)}
             className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeGroup === g.key
-                ? 'bg-blue-600 text-white border-b-2 border-blue-600'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ? 'bg-blue-600 text-white border-b-2 border-blue-600'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
           >
             {g.label}
@@ -188,8 +192,8 @@ const ManageTimeSlots = () => {
       {message.text && (
         <div
           className={`mb-4 p-3 rounded-md text-sm ${message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+            : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
             }`}
         >
           {message.text}
@@ -356,8 +360,8 @@ const ManageTimeSlots = () => {
                               onClick={() => handleToggleBreak(slot)}
                               disabled={togglingId === slot.id}
                               className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${slot.breakSlot
-                                  ? 'bg-amber-200 text-amber-800 hover:bg-amber-300 dark:bg-amber-800 dark:text-amber-100'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                ? 'bg-amber-200 text-amber-800 hover:bg-amber-300 dark:bg-amber-800 dark:text-amber-100'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
                                 } disabled:opacity-50`}
                             >
                               {togglingId === slot.id ? '…' : slot.breakSlot ? 'Break ✓' : 'Class'}

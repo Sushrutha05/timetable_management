@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { facultyAPI, departmentAPI, designationAPI } from '../../utils/api';
 import facultyTemplate from '../common/faculty_template.csv';
+import cache from '../../utils/cache';
+import useSortableTable from '../../hooks/useSortableTable';
 
 const ManageFaculty = ({ deptId }) => {
   const [facultyList, setFacultyList] = useState([]);
@@ -38,6 +40,8 @@ const ManageFaculty = ({ deptId }) => {
   const [randomizing, setRandomizing] = useState(false);
   const [randomMessage, setRandomMessage] = useState({ type: '', text: '' });
 
+  const { sortedData: sortedFaculty, handleSort, sortIcon } = useSortableTable(facultyList, 'lastName');
+
   useEffect(() => {
     loadFaculty();
     loadMetadata();
@@ -46,20 +50,22 @@ const ManageFaculty = ({ deptId }) => {
   const loadMetadata = async () => {
     try {
       const [depts, desigs] = await Promise.all([
-        departmentAPI.getAll(),
-        designationAPI.getAll(),
+        cache.getOrFetch('departments', () => departmentAPI.getAll()),
+        cache.getOrFetch('designations', () => designationAPI.getAll()),
       ]);
       setDepartmentList(depts);
       setDesignationList(desigs);
     } catch (error) {
-      console.error("Error loading metadata:", error);
+      console.error('Error loading metadata:', error);
     }
   };
 
-  const loadFaculty = async () => {
+  const loadFaculty = async (forceRefresh = false) => {
     setLoading(true);
+    const cacheKey = `faculty-${deptId || 'all'}`;
     try {
-      const data = await facultyAPI.getAll(deptId);
+      if (forceRefresh) cache.invalidate(cacheKey);
+      const data = await cache.getOrFetch(cacheKey, () => facultyAPI.getAll(deptId));
       setFacultyList(data);
       setMessage({ type: '', text: '' });
     } catch (error) {
@@ -91,7 +97,7 @@ const ManageFaculty = ({ deptId }) => {
         designation: '',
         departmentId: '',
       });
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -130,7 +136,7 @@ const ManageFaculty = ({ deptId }) => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
     } finally {
@@ -177,7 +183,7 @@ const ManageFaculty = ({ deptId }) => {
       setMessage({ type: 'success', text: 'Faculty updated successfully!' });
       setSaving(false);
       setEditingId(null);
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setSaving(false);
       setMessage({ type: 'error', text: `Update failed: ${error.message}` });
@@ -189,7 +195,7 @@ const ManageFaculty = ({ deptId }) => {
     setDeletingId(id);
     try {
       await facultyAPI.delete(id);
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Delete failed: ${error.message}` });
     } finally {
@@ -246,8 +252,8 @@ const ManageFaculty = ({ deptId }) => {
 
       {randomMessage.text && (
         <div className={`mb-4 px-4 py-3 rounded-md text-sm font-medium ${randomMessage.type === 'success'
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
           }`}>
           {randomMessage.text}
         </div>
@@ -553,25 +559,21 @@ const ManageFaculty = ({ deptId }) => {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Designation</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Department</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">#</th>
+                  <th onClick={() => handleSort('lastName')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Name{sortIcon('lastName')}</th>
+                  <th onClick={() => handleSort('user.email')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Email{sortIcon('user.email')}</th>
+                  <th onClick={() => handleSort('designationConstraint.designation')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Designation{sortIcon('designationConstraint.designation')}</th>
+                  <th onClick={() => handleSort('department.name')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Department{sortIcon('department.name')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {facultyList.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
-                      No faculty members found
-                    </td>
-                  </tr>
+                  <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">No faculty members found</td></tr>
                 ) : (
-                  facultyList.map((faculty) => (
+                  sortedFaculty.map((faculty, idx) => (
                     <tr key={faculty.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         {faculty.firstName} {faculty.middleInitial} {faculty.lastName}
                       </td>
