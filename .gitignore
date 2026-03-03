@@ -3,3 +3,4 @@
 **/.log
 application.properties
 .env
+.backup
