@@ -1,3 +1,5 @@
 **/*.class
 **/.properties
 **/.log
+application.properties
+.env

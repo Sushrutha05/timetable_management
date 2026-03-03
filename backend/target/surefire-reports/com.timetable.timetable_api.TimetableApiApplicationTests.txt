@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.timetable.timetable_api.TimetableApiApplicationTests
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.65 s -- in com.timetable.timetable_api.TimetableApiApplicationTests
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 19.71 s -- in com.timetable.timetable_api.TimetableApiApplicationTests
