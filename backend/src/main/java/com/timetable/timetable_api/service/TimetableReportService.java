@@ -30,7 +30,8 @@ import java.util.stream.Collectors;
 public class TimetableReportService {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final List<String> DEFAULT_DAY_ORDER = List.of("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY");
+    private static final List<String> DEFAULT_DAY_ORDER = List.of("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY",
+            "FRIDAY", "SATURDAY", "SUNDAY");
 
     @Autowired
     private ScheduledClassRepository scheduledClassRepository;
@@ -62,7 +63,8 @@ public class TimetableReportService {
         List<String> dayOrder = buildDayOrder(timeSlots);
         Map<String, Map<String, ScheduledClass>> grid = buildTimetableGrid(scheduledClasses);
 
-        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Section " + sectionId);
 
             CellStyle headerStyle = createHeaderStyle(workbook);
@@ -95,7 +97,8 @@ public class TimetableReportService {
     private Map<String, Map<String, ScheduledClass>> buildTimetableGrid(List<ScheduledClass> scheduledClasses) {
         Map<String, Map<String, ScheduledClass>> grid = new HashMap<>();
         for (ScheduledClass scheduledClass : scheduledClasses) {
-            String day = scheduledClass.getDayOfWeek() == null ? "" : scheduledClass.getDayOfWeek().toUpperCase(Locale.ROOT);
+            String day = scheduledClass.getDayOfWeek() == null ? ""
+                    : scheduledClass.getDayOfWeek().toUpperCase(Locale.ROOT);
             String slotKey = formatSlot(
                     scheduledClass.getStartTime() == null ? "" : scheduledClass.getStartTime().format(TIME_FORMATTER),
                     scheduledClass.getEndTime() == null ? "" : scheduledClass.getEndTime().format(TIME_FORMATTER));
@@ -123,10 +126,10 @@ public class TimetableReportService {
     }
 
     private void populateTimetableRows(List<String> dayOrder,
-                                       List<String> timeSlotColumns,
-                                       Map<String, Map<String, ScheduledClass>> grid,
-                                       Sheet sheet,
-                                       CellStyle cellStyle) {
+            List<String> timeSlotColumns,
+            Map<String, Map<String, ScheduledClass>> grid,
+            Sheet sheet,
+            CellStyle cellStyle) {
         int rowIndex = 1;
         for (String day : dayOrder) {
             Row row = sheet.createRow(rowIndex++);
@@ -151,7 +154,8 @@ public class TimetableReportService {
     private String buildCellValue(ScheduledClass scheduledClass) {
         CourseOffering offering = scheduledClass.getCourseOffering();
         Course course = offering != null ? offering.getCourse() : null;
-        Faculty faculty = offering != null ? offering.getFaculty() : null;
+        Faculty faculty = scheduledClass.getAssignedFaculty() != null ? scheduledClass.getAssignedFaculty()
+                : (offering != null ? offering.getFaculty() : null);
         Room room = scheduledClass.getRoom();
 
         List<String> lines = new ArrayList<>();
@@ -221,4 +225,3 @@ public class TimetableReportService {
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 }
-

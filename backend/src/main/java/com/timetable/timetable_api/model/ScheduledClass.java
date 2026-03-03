@@ -37,6 +37,12 @@ public class ScheduledClass {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime; // Use LocalTime for TIME
 
+    // --- Relationship 3: Many-to-One with Faculty (Substitute) ---
+    // If a lab or specific class is taken by a substitute faculty, store it here.
+    @ManyToOne
+    @JoinColumn(name = "assigned_faculty_id", referencedColumnName = "faculty_id", nullable = true)
+    private Faculty assignedFaculty;
+
     // --- Getters and Setters ---
     // (Generate them here)
 
@@ -86,5 +92,13 @@ public class ScheduledClass {
 
     public void setEndTime(LocalTime endTime) {
         this.endTime = endTime;
+    }
+
+    public Faculty getAssignedFaculty() {
+        return assignedFaculty;
+    }
+
+    public void setAssignedFaculty(Faculty assignedFaculty) {
+        this.assignedFaculty = assignedFaculty;
     }
 }

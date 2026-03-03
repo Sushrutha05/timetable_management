@@ -56,6 +56,10 @@ export const facultyAPI = {
       body: formData,
     });
   },
+  randomizePreferences: (deptId) =>
+    fetchAPI(`/api/faculty/randomize-preferences?deptId=${deptId}`, {
+      method: 'POST',
+    }),
 };
 
 // Admin APIs - Courses
@@ -173,6 +177,9 @@ export const offeringAPI = {
   delete: (id) => fetchAPI(`/api/admin/offering/${id}`, {
     method: 'DELETE',
   }),
+  autoGenerate: (deptId) => fetchAPI(`/api/admin/offering/auto-generate?deptId=${deptId}`, {
+    method: 'POST',
+  }),
 };
 
 // Admin APIs - Departments
@@ -193,7 +200,7 @@ export const departmentAPI = {
 
 // Admin APIs - Timetable
 export const timetableAPI = {
-  generate: () => fetchAPI('/api/admin/timetable/generate', {
+  generate: (parity) => fetchAPI(`/api/admin/timetable/generate${parity ? `?parity=${parity}` : ''}`, {
     method: 'POST',
   }),
   getFull: () => fetchAPI('/api/admin/timetable'),

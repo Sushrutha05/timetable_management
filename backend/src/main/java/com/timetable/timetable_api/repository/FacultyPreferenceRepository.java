@@ -9,9 +9,11 @@ import java.util.List; // Import List
 @Repository
 public interface FacultyPreferenceRepository extends JpaRepository<FacultyPreference, Long> {
 
-    // Spring Data JPA will automatically create this query based on the method name
     List<FacultyPreference> findByFacultyId(Long facultyId);
 
-    // This will automatically create a DELETE query
     void deleteByFacultyId(Long facultyId);
+
+    List<FacultyPreference> findByCourseIdOrderByPriorityAsc(Long courseId);
+
+    void deleteByCourseId(Long courseId);
 }

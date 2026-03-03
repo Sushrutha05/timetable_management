@@ -2,10 +2,8 @@ package com.timetable.timetable_api.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -23,27 +21,19 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // Enable global CORS support using our explicit configuration
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(org.springframework.security.config.Customizer.withDefaults())
 
                 // Disable CSRF for stateless APIs
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf.disable())
 
                 // Disable default login forms
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
 
                 // Authorize Requests
                 .authorizeHttpRequests(auth -> auth
-                        // Explicitly allow all POST requests to our API endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/**").permitAll()
-                        // Explicitly allow all GET requests to our API endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-                        // Explicitly allow all PUT requests (updates/edits)
-                        .requestMatchers(HttpMethod.PUT, "/api/**").permitAll()
-                        // Explicitly allow all PATCH requests
-                        .requestMatchers(HttpMethod.PATCH, "/api/**").permitAll()
-                        // Explicitly allow all DELETE requests
-                        .requestMatchers(HttpMethod.DELETE, "/api/**").permitAll()
+                        // Explicitly allow ALL requests to our API endpoints
+                        .requestMatchers("/api/**").permitAll()
                         // Any other request requires authentication
                         .anyRequest().authenticated());
 
@@ -54,7 +44,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 

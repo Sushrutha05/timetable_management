@@ -26,11 +26,15 @@ public interface CourseOfferingRepository extends JpaRepository<CourseOffering, 
     // Find offerings by faculty and section
     List<CourseOffering> findByFacultyIdAndSectionId(Long facultyId, Long sectionId);
 
+    // Used by cascade delete when a course is deleted
+    void deleteByCourseId(Long courseId);
+
     // Custom query to get total credit hours assigned to a faculty
     @Query("SELECT COALESCE(SUM(c.creditHours), 0) FROM CourseOffering co JOIN co.course c WHERE co.faculty.id = :facultyId")
     Long getTotalCreditHoursByFaculty(@Param("facultyId") Long facultyId);
 
-    // Custom query to get total credit hours assigned to a faculty for a specific section
+    // Custom query to get total credit hours assigned to a faculty for a specific
+    // section
     @Query("SELECT COALESCE(SUM(c.creditHours), 0) FROM CourseOffering co JOIN co.course c WHERE co.faculty.id = :facultyId AND co.section.id = :sectionId")
     Long getTotalCreditHoursByFacultyAndSection(@Param("facultyId") Long facultyId, @Param("sectionId") Long sectionId);
 }

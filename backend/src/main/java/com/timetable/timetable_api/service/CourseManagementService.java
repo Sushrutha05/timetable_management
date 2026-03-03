@@ -5,9 +5,12 @@ import com.timetable.timetable_api.model.Course;
 import com.timetable.timetable_api.model.Department;
 import com.timetable.timetable_api.model.DepartmentCourse;
 import com.timetable.timetable_api.model.DepartmentCourseId;
+import com.timetable.timetable_api.repository.CourseOfferingRepository;
 import com.timetable.timetable_api.repository.CourseRepository;
 import com.timetable.timetable_api.repository.DepartmentCourseRepository;
 import com.timetable.timetable_api.repository.DepartmentRepository;
+import com.timetable.timetable_api.repository.FacultyPreferenceRepository;
+import com.timetable.timetable_api.repository.ScheduledClassRepository;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +37,15 @@ public class CourseManagementService {
 
     @Autowired
     private DepartmentCourseRepository departmentCourseRepository;
+
+    @Autowired
+    private CourseOfferingRepository courseOfferingRepository;
+
+    @Autowired
+    private FacultyPreferenceRepository facultyPreferenceRepository;
+
+    @Autowired
+    private ScheduledClassRepository scheduledClassRepository;
 
     /**
      * Creates a new Course and links it to the department and semester.
@@ -133,15 +145,24 @@ public class CourseManagementService {
     }
 
     /**
-     * Deletes a course and all its department links.
+     * Deletes a course and all dependent rows, in FK-safe order:
+     * scheduled_classes → faculty_preferences → course_offerings →
+     * department_courses → course
      */
     @Transactional
     public void deleteCourse(Long id) {
         if (!courseRepository.existsById(id)) {
             throw new RuntimeException("Course not found with ID: " + id);
         }
-        // Must delete department_courses links first to satisfy FK constraint
+        // 1. Remove timetable entries that reference offerings for this course
+        scheduledClassRepository.deleteByCourseOffering_CourseId(id);
+        // 2. Remove faculty preferences for this course
+        facultyPreferenceRepository.deleteByCourseId(id);
+        // 3. Remove course offerings
+        courseOfferingRepository.deleteByCourseId(id);
+        // 4. Remove department-course links
         departmentCourseRepository.deleteByCourseId(id);
+        // 5. Finally delete the course itself
         courseRepository.deleteById(id);
     }
 

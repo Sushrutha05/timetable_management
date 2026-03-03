@@ -151,6 +151,7 @@ public class TimetableGenerationIntegrationTest {
         ts.setStartTime(LocalTime.parse(start));
         ts.setEndTime(LocalTime.parse(end));
         ts.setBreakSlot(isBreak);
+        ts.setSemesterGroup("ALL");
         timeSlotRepository.save(ts);
     }
 }

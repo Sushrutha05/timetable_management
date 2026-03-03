@@ -3,11 +3,9 @@ package com.timetable.timetable_api.controller;
 import com.timetable.timetable_api.dto.UpdateSlotRequest;
 import com.timetable.timetable_api.model.ScheduledClass;
 import com.timetable.timetable_api.service.TimetableGenerationService;
-import com.timetable.timetable_api.model.ScheduledClass;
-import com.timetable.timetable_api.service.TimetableGenerationService;
 import com.timetable.timetable_api.service.TimetableReportService;
 import com.timetable.timetable_api.service.TimetableViewService;
-import com.timetable.timetable_api.dto.UpdateSlotRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -35,14 +33,18 @@ public class TimetableGenerationController {
     private com.timetable.timetable_api.repository.TimetableMetadataRepository metadataRepository;
 
     /**
-     * Generate the master timetable.
-     * This will clear the old schedule and create a new one.
-     * Endpoint: POST /api/admin/timetable/generate
+     * Generate the timetable for a specific semester parity.
+     * Endpoint: POST /api/admin/timetable/generate?parity=EVEN|ODD
+     *
+     * parity=EVEN → semesters 2, 4, 6, 8
+     * parity=ODD → semesters 1, 3, 5, 7
+     * (omit parity) → all semesters (legacy)
      */
     @PostMapping("/generate")
-    public ResponseEntity<?> generateTimetable() {
+    public ResponseEntity<?> generateTimetable(
+            @RequestParam(name = "parity", required = false) String parity) {
         try {
-            List<ScheduledClass> generatedClasses = timetableService.generateTimetable();
+            List<ScheduledClass> generatedClasses = timetableService.generateTimetable(parity);
             return new ResponseEntity<>(generatedClasses, HttpStatus.CREATED);
         } catch (Exception e) {
             return new ResponseEntity<>("Error during generation: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);

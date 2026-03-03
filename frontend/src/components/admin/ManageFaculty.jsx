@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { facultyAPI, departmentAPI, designationAPI } from '../../utils/api';
 import facultyTemplate from '../common/faculty_template.csv';
+import cache from '../../utils/cache';
+import useSortableTable from '../../hooks/useSortableTable';
 
 const ManageFaculty = ({ deptId }) => {
   const [facultyList, setFacultyList] = useState([]);
@@ -20,6 +22,7 @@ const ManageFaculty = ({ deptId }) => {
     departmentId: '',
   });
   const [bulkFile, setBulkFile] = useState(null);
+  const [bulkFileName, setBulkFileName] = useState('');
   const [bulkUploading, setBulkUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [editingId, setEditingId] = useState(null);
@@ -34,6 +37,10 @@ const ManageFaculty = ({ deptId }) => {
   });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [randomizing, setRandomizing] = useState(false);
+  const [randomMessage, setRandomMessage] = useState({ type: '', text: '' });
+
+  const { sortedData: sortedFaculty, handleSort, sortIcon } = useSortableTable(facultyList, 'lastName');
 
   useEffect(() => {
     loadFaculty();
@@ -43,20 +50,22 @@ const ManageFaculty = ({ deptId }) => {
   const loadMetadata = async () => {
     try {
       const [depts, desigs] = await Promise.all([
-        departmentAPI.getAll(),
-        designationAPI.getAll(),
+        cache.getOrFetch('departments', () => departmentAPI.getAll()),
+        cache.getOrFetch('designations', () => designationAPI.getAll()),
       ]);
       setDepartmentList(depts);
       setDesignationList(desigs);
     } catch (error) {
-      console.error("Error loading metadata:", error);
+      console.error('Error loading metadata:', error);
     }
   };
 
-  const loadFaculty = async () => {
+  const loadFaculty = async (forceRefresh = false) => {
     setLoading(true);
+    const cacheKey = `faculty-${deptId || 'all'}`;
     try {
-      const data = await facultyAPI.getAll(deptId);
+      if (forceRefresh) cache.invalidate(cacheKey);
+      const data = await cache.getOrFetch(cacheKey, () => facultyAPI.getAll(deptId));
       setFacultyList(data);
       setMessage({ type: '', text: '' });
     } catch (error) {
@@ -88,7 +97,7 @@ const ManageFaculty = ({ deptId }) => {
         designation: '',
         departmentId: '',
       });
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
@@ -114,7 +123,8 @@ const ManageFaculty = ({ deptId }) => {
 
     try {
       const formDataUpload = new FormData();
-      formDataUpload.append('file', bulkFile);
+      // bulkFile is already an in-memory Blob snapshot — immune to disk changes
+      formDataUpload.append('file', bulkFile, bulkFileName || 'faculty.csv');
       const result = await facultyAPI.bulkUpload(formDataUpload, deptId);
       const count = Array.isArray(result) ? result.length : 0;
       setBulkMessage({
@@ -122,10 +132,11 @@ const ManageFaculty = ({ deptId }) => {
         text: `Successfully imported ${count} faculty record${count === 1 ? '' : 's'}.`,
       });
       setBulkFile(null);
+      setBulkFileName('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setBulkMessage({ type: 'error', text: `Bulk upload failed: ${error.message}` });
     } finally {
@@ -172,7 +183,7 @@ const ManageFaculty = ({ deptId }) => {
       setMessage({ type: 'success', text: 'Faculty updated successfully!' });
       setSaving(false);
       setEditingId(null);
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setSaving(false);
       setMessage({ type: 'error', text: `Update failed: ${error.message}` });
@@ -184,7 +195,7 @@ const ManageFaculty = ({ deptId }) => {
     setDeletingId(id);
     try {
       await facultyAPI.delete(id);
-      loadFaculty();
+      loadFaculty(true);
     } catch (error) {
       setMessage({ type: 'error', text: `Delete failed: ${error.message}` });
     } finally {
@@ -192,17 +203,61 @@ const ManageFaculty = ({ deptId }) => {
     }
   };
 
+  const handleRandomizePreferences = async () => {
+    const targetDeptId = deptId || formData.departmentId;
+    if (!targetDeptId) {
+      setRandomMessage({ type: 'error', text: 'No department selected. Cannot randomize.' });
+      return;
+    }
+    if (!window.confirm(
+      'This will REPLACE all existing course preferences for every faculty in this department with random ones. Continue?'
+    )) return;
+
+    setRandomizing(true);
+    setRandomMessage({ type: '', text: '' });
+    try {
+      const result = await facultyAPI.randomizePreferences(targetDeptId);
+      setRandomMessage({
+        type: 'success',
+        text: `Done! Created ${result.totalPreferencesCreated} preference entries across all faculty.`,
+      });
+    } catch (error) {
+      setRandomMessage({ type: 'error', text: `Randomize failed: ${error.message}` });
+    } finally {
+      setRandomizing(false);
+    }
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-2">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Manage Faculty</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-        >
-          {showForm ? 'Cancel' : 'Add New Faculty'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleRandomizePreferences}
+            disabled={randomizing}
+            title="Randomly assign up to 5 course preferences for every faculty in this department"
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-md transition-colors"
+          >
+            {randomizing ? '⏳ Randomizing…' : '🎲 Randomize Preferences'}
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            {showForm ? 'Cancel' : 'Add New Faculty'}
+          </button>
+        </div>
       </div>
+
+      {randomMessage.text && (
+        <div className={`mb-4 px-4 py-3 rounded-md text-sm font-medium ${randomMessage.type === 'success'
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+          {randomMessage.text}
+        </div>
+      )}
 
       {message.text && (
         <div
@@ -353,8 +408,15 @@ const ManageFaculty = ({ deptId }) => {
                 accept=".csv"
                 ref={fileInputRef}
                 onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setBulkFile(file);
+                  const file = e.target.files?.[0];
+                  if (!file) { setBulkFile(null); setBulkFileName(''); return; }
+                  setBulkFileName(file.name);
+                  // Read into memory immediately to avoid ERR_UPLOAD_FILE_CHANGED
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setBulkFile(new Blob([ev.target.result], { type: 'text/csv' }));
+                  };
+                  reader.readAsArrayBuffer(file);
                 }}
                 className="block w-full text-sm text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
               />
@@ -392,39 +454,80 @@ const ManageFaculty = ({ deptId }) => {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Faculty</h3>
           <form onSubmit={(e) => { e.preventDefault(); handleEditSave(); }}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
-              <select
-                value={editData.designation}
-                onChange={(e) => handleEditChange('designation', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">Select Designation</option>
-                {designationList.map((d) => (
-                  <option key={d.designation} value={d.designation}>
-                    {d.designation}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {!deptId && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={editData.firstName}
+                  onChange={(e) => handleEditChange('firstName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={editData.lastName}
+                  onChange={(e) => handleEditChange('lastName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Initial</label>
+                <input
+                  type="text"
+                  maxLength={1}
+                  value={editData.middleInitial}
+                  onChange={(e) => handleEditChange('middleInitial', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Designation</label>
                 <select
-                  value={editData.departmentId}
-                  onChange={(e) => handleEditChange('departmentId', e.target.value)}
+                  value={editData.designation}
+                  onChange={(e) => handleEditChange('designation', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 >
-                  <option value="">Select Department</option>
-                  {departmentList.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
+                  <option value="">Select Designation</option>
+                  {designationList.map((d) => (
+                    <option key={d.designation} value={d.designation}>
+                      {d.designation}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
+              {!deptId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                  <select
+                    value={editData.departmentId}
+                    onChange={(e) => handleEditChange('departmentId', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select Department</option>
+                    {departmentList.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  New Password <span className="text-gray-400 text-xs">(leave blank to keep current)</span>
+                </label>
+                <input
+                  type="password"
+                  value={editData.password}
+                  onChange={(e) => handleEditChange('password', e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
             <div className="mt-4 flex gap-3">
               <button
                 type="submit"
@@ -456,30 +559,26 @@ const ManageFaculty = ({ deptId }) => {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Designation</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Department</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">#</th>
+                  <th onClick={() => handleSort('lastName')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Name{sortIcon('lastName')}</th>
+                  <th onClick={() => handleSort('user.email')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Email{sortIcon('user.email')}</th>
+                  <th onClick={() => handleSort('designationConstraint.designation')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Designation{sortIcon('designationConstraint.designation')}</th>
+                  <th onClick={() => handleSort('department.name')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer select-none hover:text-gray-800 dark:hover:text-white">Department{sortIcon('department.name')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {facultyList.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
-                      No faculty members found
-                    </td>
-                  </tr>
+                  <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">No faculty members found</td></tr>
                 ) : (
-                  facultyList.map((faculty) => (
+                  sortedFaculty.map((faculty, idx) => (
                     <tr key={faculty.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         {faculty.firstName} {faculty.middleInitial} {faculty.lastName}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.user?.email || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.designation || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.designationConstraint?.designation || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{faculty.department?.name || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex gap-2">

@@ -257,7 +257,9 @@ const ViewTimetable = () => {
           if (!nslot || !nsc) break;
           const sameOffering = nsc?.courseOffering?.id === sc?.courseOffering?.id;
           const sameRoom = nsc?.room?.id === sc?.room?.id;
-          const sameFaculty = nsc?.courseOffering?.faculty?.id === sc?.courseOffering?.faculty?.id;
+          const scFacultyId = sc?.assignedFaculty?.id || sc?.courseOffering?.faculty?.id;
+          const nscFacultyId = nsc?.assignedFaculty?.id || nsc?.courseOffering?.faculty?.id;
+          const sameFaculty = scFacultyId === nscFacultyId;
           const contiguous = prevEnd === nslot.startTime;
           if (!(sameOffering && sameRoom && sameFaculty && contiguous)) break;
           span += 1;
@@ -275,7 +277,15 @@ const ViewTimetable = () => {
               {sc?.courseOffering?.course?.courseCode || 'COURSE'}
             </div>
             <div className="text-[11px] text-gray-700 dark:text-gray-300">
-              {sc?.courseOffering?.faculty?.firstName} {sc?.courseOffering?.faculty?.lastName}
+              {sc?.assignedFaculty ? (
+                <span className="text-purple-600 dark:text-purple-400 font-medium">
+                  {sc.assignedFaculty.firstName} {sc.assignedFaculty.lastName} (Sub)
+                </span>
+              ) : (
+                <span>
+                  {sc?.courseOffering?.faculty?.firstName} {sc?.courseOffering?.faculty?.lastName}
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-gray-500 dark:text-gray-400">Room: {sc?.room?.roomNumber || '-'}</div>
           </td>

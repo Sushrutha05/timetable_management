@@ -2,15 +2,19 @@ package com.timetable.timetable_api.service;
 
 import com.timetable.timetable_api.dto.FacultyPreferenceRequest;
 import com.timetable.timetable_api.model.Course;
+import com.timetable.timetable_api.model.DepartmentCourse;
 import com.timetable.timetable_api.model.Faculty;
 import com.timetable.timetable_api.model.FacultyPreference;
 import com.timetable.timetable_api.repository.CourseRepository;
+import com.timetable.timetable_api.repository.DepartmentCourseRepository;
 import com.timetable.timetable_api.repository.FacultyPreferenceRepository;
 import com.timetable.timetable_api.repository.FacultyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,11 +30,13 @@ public class FacultyPreferenceService {
     @Autowired
     private CourseRepository courseRepository;
 
+    @Autowired
+    private DepartmentCourseRepository departmentCourseRepository;
+
     /**
      * Gets all preferences for a specific faculty member.
      */
     public List<FacultyPreference> getPreferencesByFaculty(Long facultyId) {
-        // We'll add a custom method to the repository for this
         return preferenceRepository.findByFacultyId(facultyId);
     }
 
@@ -39,17 +45,12 @@ public class FacultyPreferenceService {
      */
     @Transactional
     public List<FacultyPreference> setPreferences(Long facultyId, FacultyPreferenceRequest request) {
-
-        // 1. Fetch the faculty member
         Faculty faculty = facultyRepository.findById(facultyId)
                 .orElseThrow(() -> new RuntimeException("Faculty not found with ID: " + facultyId));
 
-        // 2. Delete all old preferences for this faculty
         preferenceRepository.deleteByFacultyId(facultyId);
 
-        // 3. Create and save new preferences
         return request.getPreferences().stream().map(item -> {
-            // Fetch the course
             Course course = courseRepository.findById(item.getCourseId())
                     .orElseThrow(() -> new RuntimeException("Course not found with ID: " + item.getCourseId()));
 
@@ -60,5 +61,51 @@ public class FacultyPreferenceService {
 
             return preferenceRepository.save(newPreference);
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * One-click random preference assignment for a whole department.
+     * For every faculty member in [deptId]:
+     * 1. Clears their existing preferences.
+     * 2. Randomly shuffles all courses taught by that department.
+     * 3. Assigns the first MAX_PREFS courses with priorities 1…N.
+     *
+     * @return total number of preference rows created
+     */
+    @Transactional
+    public int randomizePreferencesForDepartment(Integer deptId) {
+        final int MAX_PREFS = 5;
+
+        // All unique courses in this department (across all semesters)
+        List<Course> allCourses = departmentCourseRepository.findByDepartmentId(deptId)
+                .stream()
+                .map(DepartmentCourse::getCourse)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (allCourses.isEmpty()) {
+            return 0;
+        }
+
+        List<Faculty> facultyList = facultyRepository.findByDepartmentId(deptId);
+        int totalAssigned = 0;
+
+        for (Faculty faculty : facultyList) {
+            preferenceRepository.deleteByFacultyId(faculty.getId());
+
+            List<Course> shuffled = new ArrayList<>(allCourses);
+            Collections.shuffle(shuffled);
+            List<Course> chosen = shuffled.subList(0, Math.min(MAX_PREFS, shuffled.size()));
+
+            for (int i = 0; i < chosen.size(); i++) {
+                FacultyPreference pref = new FacultyPreference();
+                pref.setFaculty(faculty);
+                pref.setCourse(chosen.get(i));
+                pref.setPriority(i + 1); // 1 = highest priority
+                preferenceRepository.save(pref);
+                totalAssigned++;
+            }
+        }
+        return totalAssigned;
     }
 }

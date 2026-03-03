@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.timetable.timetable_api.TimetableGenerationIntegrationTest" time="3.326" tests="1" errors="1" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.timetable.timetable_api.TimetableApiApplicationTests" time="23.645" tests="1" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
@@ -45,7 +45,7 @@
     <property name="localRepository" value="/home/vaibhav-sharma/.m2/repository"/>
     <property name="java.vendor.url.bug" value="https://bugs.launchpad.net/ubuntu/+source/openjdk-21"/>
     <property name="java.io.tmpdir" value="/tmp"/>
-    <property name="com.zaxxer.hikari.pool_number" value="2"/>
+    <property name="com.zaxxer.hikari.pool_number" value="1"/>
     <property name="java.version" value="21.0.10"/>
     <property name="user.dir" value="/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend"/>
     <property name="os.arch" value="amd64"/>
@@ -61,73 +61,9 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="testLtpScheduling" classname="com.timetable.timetable_api.TimetableGenerationIntegrationTest" time="0.375">
-    <error message="not-null property references a null or transient value: com.timetable.timetable_api.model.TimeSlot.semesterGroup" type="org.springframework.dao.DataIntegrityViolationException"><![CDATA[org.springframework.dao.DataIntegrityViolationException: not-null property references a null or transient value: com.timetable.timetable_api.model.TimeSlot.semesterGroup
-	at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:311)
-	at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:256)
-	at org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241)
-	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:560)
-	at org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61)
-	at org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:343)
-	at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160)
-	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-	at org.springframework.data.jpa.repository.support.CrudMethodMetadataPostProcessor$CrudMethodMetadataPopulatingMethodInterceptor.invoke(CrudMethodMetadataPostProcessor.java:165)
-	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:223)
-	at jdk.proxy2/jdk.proxy2.$Proxy156.save(Unknown Source)
-	at com.timetable.timetable_api.TimetableGenerationIntegrationTest.createSlot(TimetableGenerationIntegrationTest.java:154)
-	at com.timetable.timetable_api.TimetableGenerationIntegrationTest.testLtpScheduling(TimetableGenerationIntegrationTest.java:114)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-Caused by: org.hibernate.PropertyValueException: not-null property references a null or transient value: com.timetable.timetable_api.model.TimeSlot.semesterGroup
-	at org.hibernate.engine.internal.Nullability.checkNullability(Nullability.java:112)
-	at org.hibernate.engine.internal.Nullability.checkNullability(Nullability.java:57)
-	at org.hibernate.action.internal.AbstractEntityInsertAction.nullifyTransientReferencesIfNotAlready(AbstractEntityInsertAction.java:126)
-	at org.hibernate.action.internal.EntityIdentityInsertAction.execute(EntityIdentityInsertAction.java:73)
-	at org.hibernate.engine.spi.ActionQueue.execute(ActionQueue.java:682)
-	at org.hibernate.engine.spi.ActionQueue.addResolvedEntityInsertAction(ActionQueue.java:293)
-	at org.hibernate.engine.spi.ActionQueue.addInsertAction(ActionQueue.java:274)
-	at org.hibernate.engine.spi.ActionQueue.addAction(ActionQueue.java:324)
-	at org.hibernate.event.internal.AbstractSaveEventListener.addInsertAction(AbstractSaveEventListener.java:394)
-	at org.hibernate.event.internal.AbstractSaveEventListener.performSaveOrReplicate(AbstractSaveEventListener.java:308)
-	at org.hibernate.event.internal.AbstractSaveEventListener.performSave(AbstractSaveEventListener.java:224)
-	at org.hibernate.event.internal.AbstractSaveEventListener.saveWithGeneratedId(AbstractSaveEventListener.java:136)
-	at org.hibernate.event.internal.DefaultPersistEventListener.entityIsTransient(DefaultPersistEventListener.java:177)
-	at org.hibernate.event.internal.DefaultPersistEventListener.persist(DefaultPersistEventListener.java:95)
-	at org.hibernate.event.internal.DefaultPersistEventListener.onPersist(DefaultPersistEventListener.java:79)
-	at org.hibernate.event.internal.DefaultPersistEventListener.onPersist(DefaultPersistEventListener.java:55)
-	at org.hibernate.event.service.internal.EventListenerGroupImpl.fireEventOnEachListener(EventListenerGroupImpl.java:127)
-	at org.hibernate.internal.SessionImpl.firePersist(SessionImpl.java:761)
-	at org.hibernate.internal.SessionImpl.persist(SessionImpl.java:745)
-	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at org.springframework.orm.jpa.SharedEntityManagerCreator$SharedEntityManagerInvocationHandler.invoke(SharedEntityManagerCreator.java:320)
-	at jdk.proxy2/jdk.proxy2.$Proxy137.persist(Unknown Source)
-	at org.springframework.data.jpa.repository.support.SimpleJpaRepository.save(SimpleJpaRepository.java:654)
-	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
-	at org.springframework.data.repository.core.support.RepositoryMethodInvoker$RepositoryFragmentMethodInvoker.lambda$new$0(RepositoryMethodInvoker.java:277)
-	at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
-	at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
-	at org.springframework.data.repository.core.support.RepositoryComposition$RepositoryFragments.invoke(RepositoryComposition.java:515)
-	at org.springframework.data.repository.core.support.RepositoryComposition.invoke(RepositoryComposition.java:284)
-	at org.springframework.data.repository.core.support.RepositoryFactorySupport$ImplementationMethodExecutionInterceptor.invoke(RepositoryFactorySupport.java:734)
-	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-	at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:174)
-	at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
-	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-	at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
-	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
-	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
-	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
-	at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
-	... 10 more
-]]></error>
-    <system-out><![CDATA[2026-03-04T01:48:46.529+05:30  INFO 553981 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.timetable.timetable_api.TimetableGenerationIntegrationTest]: TimetableGenerationIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-2026-03-04T01:48:46.534+05:30  INFO 553981 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.timetable.timetable_api.TimetableApiApplication for test class com.timetable.timetable_api.TimetableGenerationIntegrationTest
+  <testcase name="contextLoads" classname="com.timetable.timetable_api.TimetableApiApplicationTests" time="0.757">
+    <system-out><![CDATA[01:48:23.307 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.timetable.timetable_api.TimetableApiApplicationTests]: TimetableApiApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:48:23.498 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.timetable.timetable_api.TimetableApiApplication for test class com.timetable.timetable_api.TimetableApiApplicationTests
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -138,103 +74,49 @@ Caused by: org.hibernate.PropertyValueException: not-null property references a 
 
  :: Spring Boot ::                (v3.5.7)
 
-2026-03-04T01:48:46.583+05:30  INFO 553981 --- [           main] c.t.t.TimetableGenerationIntegrationTest : Starting TimetableGenerationIntegrationTest using Java 21.0.10 with PID 553981 (started by vaibhav-sharma in /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend)
-2026-03-04T01:48:46.584+05:30  INFO 553981 --- [           main] c.t.t.TimetableGenerationIntegrationTest : The following 1 profile is active: "test"
-2026-03-04T01:48:46.947+05:30  INFO 553981 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-03-04T01:48:46.983+05:30  INFO 553981 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 34 ms. Found 13 JPA repository interfaces.
-2026-03-04T01:48:47.202+05:30  INFO 553981 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-03-04T01:48:47.206+05:30  INFO 553981 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-03-04T01:48:47.220+05:30  INFO 553981 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-03-04T01:48:47.221+05:30  INFO 553981 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
-2026-03-04T01:48:47.892+05:30  INFO 553981 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
-2026-03-04T01:48:47.893+05:30  INFO 553981 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
-2026-03-04T01:48:47.902+05:30  WARN 553981 --- [           main] org.hibernate.dialect.Dialect            : HHH000511: The 2.3.232 version for [org.hibernate.dialect.PostgreSQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 12.0.0. Check the community dialects project for available legacy versions.
-2026-03-04T01:48:47.904+05:30  WARN 553981 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-03-04T01:48:47.913+05:30  INFO 553981 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
-	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-2)']
+2026-03-04T01:48:24.392+05:30  INFO 553981 --- [           main] c.t.t.TimetableApiApplicationTests       : Starting TimetableApiApplicationTests using Java 21.0.10 with PID 553981 (started by vaibhav-sharma in /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend)
+2026-03-04T01:48:24.398+05:30  INFO 553981 --- [           main] c.t.t.TimetableApiApplicationTests       : No active profile set, falling back to 1 default profile: "default"
+2026-03-04T01:48:26.277+05:30  INFO 553981 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-03-04T01:48:26.472+05:30  INFO 553981 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 177 ms. Found 13 JPA repository interfaces.
+2026-03-04T01:48:28.226+05:30  INFO 553981 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-03-04T01:48:30.296+05:30  INFO 553981 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@288728e
+2026-03-04T01:48:30.297+05:30  INFO 553981 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-03-04T01:48:30.623+05:30  INFO 553981 --- [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres (PostgreSQL 17.6)
+2026-03-04T01:48:31.842+05:30  WARN 553981 --- [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: PostgreSQL 17.6 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 16.
+2026-03-04T01:48:32.677+05:30  INFO 553981 --- [           main] o.f.core.internal.command.DbValidate     : Successfully validated 10 migrations (execution time 00:00.638s)
+2026-03-04T01:48:34.391+05:30  INFO 553981 --- [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 10
+2026-03-04T01:48:34.532+05:30  INFO 553981 --- [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-03-04T01:48:35.505+05:30  INFO 553981 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-04T01:48:35.615+05:30  INFO 553981 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-03-04T01:48:35.674+05:30  INFO 553981 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-03-04T01:48:36.273+05:30  INFO 553981 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-03-04T01:48:36.720+05:30  WARN 553981 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-03-04T01:48:37.011+05:30  INFO 553981 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
 	Database driver: undefined/unknown
-	Database version: 2.3.232
+	Database version: 17.6
 	Autocommit mode: undefined/unknown
 	Isolation level: undefined/unknown
 	Minimum pool size: undefined/unknown
 	Maximum pool size: undefined/unknown
-2026-03-04T01:48:48.105+05:30  INFO 553981 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-Hibernate: set client_min_messages = WARNING
-Hibernate: alter table if exists course_offerings drop constraint if exists FKneiyouykg665f171dkr2h7or3
-Hibernate: alter table if exists course_offerings drop constraint if exists FKq8hyeiowuxn2gvbcv6gr9oc7j
-Hibernate: alter table if exists course_offerings drop constraint if exists FKqcfyg8k5hq7b5msbnhcx0b2n8
-Hibernate: alter table if exists department_courses drop constraint if exists FK4bb55hee85pqelbvo1i3rw83o
-Hibernate: alter table if exists department_courses drop constraint if exists FKjx43lqo4mj3094s3pfvjou6vw
-Hibernate: alter table if exists faculty drop constraint if exists FKbcib0tg0bv7u4cwa1bfwyn6ud
-Hibernate: alter table if exists faculty drop constraint if exists FKhj801lcydglt9ndhad2nwx37b
-Hibernate: alter table if exists faculty drop constraint if exists FKfakwwhqpm5bahy2do8t30j58r
-Hibernate: alter table if exists faculty_preferences drop constraint if exists FKikcb80vo5d3u8ugnxiwxyhrov
-Hibernate: alter table if exists faculty_preferences drop constraint if exists FKggimkrf094xvn82ie2hfna62k
-Hibernate: alter table if exists scheduled_classes drop constraint if exists FKpw9tl9gtrmdcexysi7tqi4dl8
-Hibernate: alter table if exists scheduled_classes drop constraint if exists FKf5p2f2s2hr0qxp82m093ssmqt
-Hibernate: alter table if exists scheduled_classes drop constraint if exists FKbtepjxitwqqd40lvid31lk81y
-Hibernate: alter table if exists sections drop constraint if exists FKgnisg480cbsx8krnlq30qaym5
-Hibernate: drop table if exists course_offerings cascade
-Hibernate: drop table if exists courses cascade
-Hibernate: drop table if exists department_courses cascade
-Hibernate: drop table if exists departments cascade
-Hibernate: drop table if exists designation_constraints cascade
-Hibernate: drop table if exists faculty cascade
-Hibernate: drop table if exists faculty_preferences cascade
-Hibernate: drop table if exists rooms cascade
-Hibernate: drop table if exists scheduled_classes cascade
-Hibernate: drop table if exists sections cascade
-Hibernate: drop table if exists time_slots cascade
-Hibernate: drop table if exists timetable_metadata cascade
-Hibernate: drop table if exists users cascade
-Hibernate: create table course_offerings (course_id bigint not null, faculty_id bigint not null, offering_id bigint generated by default as identity, section_id bigint not null, primary key (offering_id))
-Hibernate: create table courses (credit_hours integer not null, lecture_hours integer, practical_hours integer, tutorial_hours integer, course_id bigint generated by default as identity, course_code varchar(255) not null unique, course_name varchar(255) not null unique, course_type varchar(255), primary key (course_id))
-Hibernate: create table department_courses (department_id integer not null, semester integer not null, course_id bigint not null, primary key (department_id, course_id))
-Hibernate: create table departments (department_id integer generated by default as identity, name varchar(255) not null unique, primary key (department_id))
-Hibernate: create table designation_constraints (max_lab_hours integer not null, max_lecture_hours integer not null, max_total_hours integer, priority_level integer, designation varchar(255) not null, primary key (designation))
-Hibernate: create table faculty (department_id integer not null, faculty_id bigint generated by default as identity, user_id bigint not null unique, designation varchar(255) not null, first_name varchar(255) not null, last_name varchar(255), middle_initial varchar(255), primary key (faculty_id))
-Hibernate: create table faculty_preferences (priority integer not null, course_id bigint not null, faculty_id bigint not null, preference_id bigint generated by default as identity, primary key (preference_id))
-Hibernate: create table rooms (capacity integer not null, room_id integer generated by default as identity, room_number varchar(255) not null unique, type varchar(255) not null, primary key (room_id))
-Hibernate: create table scheduled_classes (end_time time(6) not null, room_id integer not null, start_time time(6) not null, assigned_faculty_id bigint, class_id bigint generated by default as identity, offering_id bigint not null, day_of_week varchar(255) not null, primary key (class_id))
-Hibernate: create table sections (department_id integer not null, semester integer not null, student_count integer, "year" integer not null, section_id bigint generated by default as identity, name varchar(255) not null, primary key (section_id))
-Hibernate: create table time_slots (end_time time(6) not null, is_break boolean not null, start_time time(6) not null, time_slot_id bigint generated by default as identity, day_of_week varchar(255) not null, semester_group varchar(255) not null, primary key (time_slot_id))
-Hibernate: create table timetable_metadata (id bigint generated by default as identity, "key" varchar(255) not null unique, "value" varchar(255) not null, primary key (id))
-Hibernate: create table users (department_id integer, requires_password_reset boolean not null, role integer not null, user_id bigint generated by default as identity, email varchar(255) not null unique, password_hash varchar(255) not null, primary key (user_id))
-Hibernate: alter table if exists course_offerings add constraint FKneiyouykg665f171dkr2h7or3 foreign key (course_id) references courses
-Hibernate: alter table if exists course_offerings add constraint FKq8hyeiowuxn2gvbcv6gr9oc7j foreign key (faculty_id) references faculty
-Hibernate: alter table if exists course_offerings add constraint FKqcfyg8k5hq7b5msbnhcx0b2n8 foreign key (section_id) references sections
-Hibernate: alter table if exists department_courses add constraint FK4bb55hee85pqelbvo1i3rw83o foreign key (course_id) references courses
-Hibernate: alter table if exists department_courses add constraint FKjx43lqo4mj3094s3pfvjou6vw foreign key (department_id) references departments
-Hibernate: alter table if exists faculty add constraint FKbcib0tg0bv7u4cwa1bfwyn6ud foreign key (department_id) references departments
-Hibernate: alter table if exists faculty add constraint FKhj801lcydglt9ndhad2nwx37b foreign key (designation) references designation_constraints
-Hibernate: alter table if exists faculty add constraint FKfakwwhqpm5bahy2do8t30j58r foreign key (user_id) references users
-Hibernate: alter table if exists faculty_preferences add constraint FKikcb80vo5d3u8ugnxiwxyhrov foreign key (course_id) references courses
-Hibernate: alter table if exists faculty_preferences add constraint FKggimkrf094xvn82ie2hfna62k foreign key (faculty_id) references faculty
-Hibernate: alter table if exists scheduled_classes add constraint FKpw9tl9gtrmdcexysi7tqi4dl8 foreign key (assigned_faculty_id) references faculty
-Hibernate: alter table if exists scheduled_classes add constraint FKf5p2f2s2hr0qxp82m093ssmqt foreign key (offering_id) references course_offerings
-Hibernate: alter table if exists scheduled_classes add constraint FKbtepjxitwqqd40lvid31lk81y foreign key (room_id) references rooms
-Hibernate: alter table if exists sections add constraint FKgnisg480cbsx8krnlq30qaym5 foreign key (department_id) references departments
-2026-03-04T01:48:48.257+05:30  INFO 553981 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-03-04T01:48:48.790+05:30  WARN 553981 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-03-04T01:48:49.176+05:30  WARN 553981 --- [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+2026-03-04T01:48:38.582+05:30  INFO 553981 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-03-04T01:48:39.293+05:30  INFO 553981 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-03-04T01:48:40.148+05:30  INFO 553981 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-03-04T01:48:43.219+05:30  WARN 553981 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-03-04T01:48:43.861+05:30  WARN 553981 --- [           main] .s.s.UserDetailsServiceAutoConfiguration : 
 
-Using generated security password: 097665dd-f8d4-4d14-99e5-3a9fb92b150b
+Using generated security password: 20761fa3-d020-4cef-a819-eb0f75a3ed96
 
 This generated password is for development use only. Your security configuration must be updated before running your application in production.
 
-2026-03-04T01:48:49.180+05:30  INFO 553981 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
-2026-03-04T01:48:49.455+05:30  INFO 553981 --- [           main] c.t.t.TimetableGenerationIntegrationTest : Started TimetableGenerationIntegrationTest in 2.914 seconds (process running for 27.568)
-Hibernate: insert into departments (name) values (?)
-Hibernate: insert into users (department_id,email,password_hash,requires_password_reset,role) values (?,?,?,?,?)
-Hibernate: select dc1_0.designation,dc1_0.max_lab_hours,dc1_0.max_lecture_hours,dc1_0.max_total_hours,dc1_0.priority_level from designation_constraints dc1_0 where dc1_0.designation=?
-Hibernate: insert into designation_constraints (max_lab_hours,max_lecture_hours,max_total_hours,priority_level,designation) values (?,?,?,?,?)
-Hibernate: select null,dc1_0.max_lab_hours,dc1_0.max_lecture_hours,dc1_0.max_total_hours,dc1_0.priority_level from designation_constraints dc1_0 where dc1_0.designation=?
-Hibernate: insert into faculty (department_id,designation,first_name,last_name,middle_initial,user_id) values (?,?,?,?,?,?)
-Hibernate: insert into courses (course_code,course_name,course_type,credit_hours,lecture_hours,practical_hours,tutorial_hours) values (?,?,?,?,?,?,?)
-Hibernate: insert into sections (department_id,name,semester,student_count,"year") values (?,?,?,?,?)
-Hibernate: insert into course_offerings (course_id,faculty_id,section_id) values (?,?,?)
-Hibernate: insert into rooms (capacity,room_number,type) values (?,?,?)
-Hibernate: insert into rooms (capacity,room_number,type) values (?,?,?)
+2026-03-04T01:48:43.873+05:30  INFO 553981 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-03-04T01:48:45.645+05:30  INFO 553981 --- [           main] c.t.t.TimetableApiApplicationTests       : Started TimetableApiApplicationTests in 21.838 seconds (process running for 23.759)
 ]]></system-out>
+    <system-err><![CDATA[Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/home/vaibhav-sharma/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+]]></system-err>
   </testcase>
 </testsuite>
