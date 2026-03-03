@@ -61,31 +61,38 @@ public class TimetableGenerationService {
         if (allRooms.isEmpty())
             throw new RuntimeException("No rooms configured. Please add rooms before generating a timetable.");
 
-        // Fetch ALL slots (including breaks) sorted by day+time.
-        // We need breaks for contiguity analysis of lab blocks.
-        List<TimeSlot> allSlotsIncludingBreaks = timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc()
+        // ── Build per-semesterGroup slot maps ──────────────────────────────
+        // Each group (SEM_3_4, SEM_5_6_7, SEM_1_2, …) has its own set of
+        // time slots with different break positions. We must only offer a
+        // section the slots that match its own group; mixing groups causes
+        // wall-clock gaps that make every lab block look non-contiguous.
+        List<TimeSlot> allSlotsRaw = timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc()
                 .stream()
                 .sorted(Comparator
                         .comparing((TimeSlot ts) -> dayOrder(ts.getDayOfWeek()))
                         .thenComparing(TimeSlot::getStartTime))
                 .collect(Collectors.toList());
 
-        if (allSlotsIncludingBreaks.isEmpty())
+        if (allSlotsRaw.isEmpty())
             throw new RuntimeException(
                     "No time slots configured. Please create time slots before generating a timetable.");
 
-        // Teaching-only slots (breaks excluded) – used for theory/tutorial
-        List<TimeSlot> teachingSlots = allSlotsIncludingBreaks.stream()
-                .filter(ts -> !ts.isBreakSlot())
-                .collect(Collectors.toList());
+        // allByGroup[group][day] = all slots (incl. breaks) — used for lab candidate
+        // search
+        Map<String, Map<String, List<TimeSlot>>> allByGroup = new LinkedHashMap<>();
+        // teachingByGroup[group][day] = non-break slots only — used for theory/tutorial
+        Map<String, Map<String, List<TimeSlot>>> teachingByGroup = new LinkedHashMap<>();
 
-        // Group Both sets by day
-        Map<String, List<TimeSlot>> teachingByDay = teachingSlots.stream()
-                .collect(Collectors.groupingBy(ts -> normalizeDay(ts.getDayOfWeek()),
-                        LinkedHashMap::new, Collectors.toList()));
-        Map<String, List<TimeSlot>> allByDay = allSlotsIncludingBreaks.stream()
-                .collect(Collectors.groupingBy(ts -> normalizeDay(ts.getDayOfWeek()),
-                        LinkedHashMap::new, Collectors.toList()));
+        for (TimeSlot ts : allSlotsRaw) {
+            String grp = ts.getSemesterGroup() == null ? "UNKNOWN" : ts.getSemesterGroup().trim().toUpperCase();
+            String day = normalizeDay(ts.getDayOfWeek());
+
+            allByGroup.computeIfAbsent(grp, k -> new LinkedHashMap<>())
+                    .computeIfAbsent(day, k -> new ArrayList<>()).add(ts);
+            if (!ts.isBreakSlot())
+                teachingByGroup.computeIfAbsent(grp, k -> new LinkedHashMap<>())
+                        .computeIfAbsent(day, k -> new ArrayList<>()).add(ts);
+        }
 
         // ── Workload trackers ───────────────────────────────────────────────
         Map<Long, Integer> facultyCreditHours = new HashMap<>();
@@ -125,40 +132,47 @@ public class TimetableGenerationService {
                     lHours = Optional.ofNullable(c.getCreditHours()).orElse(0);
                 }
 
-                // 1. Practicals — use FULL slot list (including breaks) so the
-                // break that sits inside a lab block is transparent.
+                // Resolve the semester group for this section's semester
+                String grp = semesterGroupFor(offering.getSection().getSemester());
+                Map<String, List<TimeSlot>> offeringAllByDay = allByGroup.getOrDefault(grp, Map.of());
+                Map<String, List<TimeSlot>> offeringTeachByDay = teachingByGroup.getOrDefault(grp, Map.of());
+
+                // 1. Practicals — use FULL slot list for this group (including breaks)
+                // so the tea-break inside a lab block is transparent.
                 if (pHours > 0) {
                     int blockSize = labBlockSize(c);
                     boolean scheduled = schedulePractical(
                             offering, pHours, blockSize,
-                            allRooms, allByDay,
+                            allRooms, offeringAllByDay,
                             occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException(
                                 "Failed to schedule Practical for " + c.getCourseCode()
-                                        + " — not enough contiguous lab slots available.");
+                                        + " (semGroup=" + grp + ") — not enough contiguous lab slots.");
                 }
 
-                // 2. Lectures (block of 1, teaching slots only)
+                // 2. Lectures (block of 1, teaching slots for this group only)
                 if (lHours > 0) {
                     boolean scheduled = scheduleComponent(
                             offering, "LECTURE", lHours, 1,
-                            allRooms, teachingByDay,
+                            allRooms, offeringTeachByDay,
                             occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException(
-                                "Failed to schedule Lecture for " + c.getCourseCode());
+                                "Failed to schedule Lecture for " + c.getCourseCode()
+                                        + " (semGroup=" + grp + ")");
                 }
 
-                // 3. Tutorials (block of 1, teaching slots only)
+                // 3. Tutorials (block of 1, teaching slots for this group only)
                 if (tHours > 0) {
                     boolean scheduled = scheduleComponent(
                             offering, "TUTORIAL", tHours, 1,
-                            allRooms, teachingByDay,
+                            allRooms, offeringTeachByDay,
                             occupied, facultyCreditHours, sectionDailyHours, created);
                     if (!scheduled)
                         throw new RuntimeException(
-                                "Failed to schedule Tutorial for " + c.getCourseCode());
+                                "Failed to schedule Tutorial for " + c.getCourseCode()
+                                        + " (semGroup=" + grp + ")");
                 }
             }
         }
@@ -665,5 +679,26 @@ public class TimetableGenerationService {
         } catch (IllegalArgumentException ex) {
             return 8;
         }
+    }
+
+    /**
+     * Maps a semester number to the semesterGroup label stored on TimeSlot rows.
+     *
+     * Group labels must match exactly what is stored in the time_slots table.
+     * Extend this mapping if additional groups are added.
+     *
+     * Sem 1, 2 → SEM_1_2
+     * Sem 3, 4 → SEM_3_4
+     * Sem 5, 6 → SEM_5_6_7 (same slot grid as 7)
+     * Sem 7, 8 → SEM_5_6_7
+     */
+    private String semesterGroupFor(Integer semester) {
+        if (semester == null)
+            return "SEM_3_4"; // safe default
+        return switch (semester) {
+            case 1, 2 -> "SEM_1_2";
+            case 3, 4 -> "SEM_3_4";
+            default -> "SEM_5_6_7"; // covers 5, 6, 7, 8
+        };
     }
 }
