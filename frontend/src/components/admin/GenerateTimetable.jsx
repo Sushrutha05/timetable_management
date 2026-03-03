@@ -1,109 +1,159 @@
 import React, { useState } from 'react';
 import { timetableAPI } from '../../utils/api';
 
+const PARITY_OPTIONS = [
+  {
+    parity: 'EVEN',
+    label: 'Generate Even Semester Timetable',
+    sublabel: 'Semesters 2, 4, 6, 8',
+    color: 'blue',
+    icon: '📘',
+  },
+  {
+    parity: 'ODD',
+    label: 'Generate Odd Semester Timetable',
+    sublabel: 'Semesters 1, 3, 5, 7',
+    color: 'indigo',
+    icon: '📗',
+  },
+];
+
 const GenerateTimetable = () => {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [generatedClasses, setGeneratedClasses] = useState(null);
+  const [loading, setLoading] = useState(null); // 'EVEN' | 'ODD' | null
+  const [messages, setMessages] = useState({ EVEN: null, ODD: null });
+  const [counts, setCounts] = useState({ EVEN: null, ODD: null });
 
-  const handleGenerate = async () => {
-    if (!window.confirm('This will clear the old schedule and generate a new timetable. Continue?')) {
-      return;
-    }
+  const handleGenerate = async (parity) => {
+    const label = parity === 'EVEN' ? 'Even (Sem 2, 4, 6, 8)' : 'Odd (Sem 1, 3, 5, 7)';
+    if (!window.confirm(
+      `This will clear the existing ${label} semester schedule and generate a new one.\nThe other semester's timetable will NOT be affected.\n\nContinue?`
+    )) return;
 
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-    setGeneratedClasses(null);
+    setLoading(parity);
+    setMessages((prev) => ({ ...prev, [parity]: null }));
+    setCounts((prev) => ({ ...prev, [parity]: null }));
 
     try {
-      const data = await timetableAPI.generate();
-      setGeneratedClasses(data);
-      setMessage({ type: 'success', text: `Timetable generated successfully! ${data?.length || 0} classes scheduled.` });
+      const data = await timetableAPI.generate(parity);
+      const count = data?.length || 0;
+      setCounts((prev) => ({ ...prev, [parity]: count }));
+      setMessages((prev) => ({
+        ...prev,
+        [parity]: { type: 'success', text: `✅ ${label} timetable generated! ${count} classes scheduled.` },
+      }));
     } catch (error) {
-      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setMessages((prev) => ({
+        ...prev,
+        [parity]: { type: 'error', text: `❌ ${error.message}` },
+      }));
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
+  };
+
+  const colorMap = {
+    blue: {
+      btn: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+      badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    },
+    indigo: {
+      btn: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',
+      badge: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+    },
   };
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Generate Master Timetable</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          This will generate a complete timetable based on all course offerings, faculty preferences, room availability, and time slots.
-          The previous schedule will be cleared.
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Generate Timetable
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400">
+          Even and odd semesters run in different halves of the year, so they are
+          generated independently. Faculty workloads and room conflicts are resolved
+          separately for each parity.
         </p>
       </div>
 
-      {message.text && (
-        <div
-          className={`mb-4 p-3 rounded-md ${
-            message.type === 'success'
-              ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-              : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {PARITY_OPTIONS.map(({ parity, label, sublabel, color, icon }) => {
+          const c = colorMap[color];
+          const msg = messages[parity];
+          const isLoading = loading === parity;
+          const isDisabled = loading !== null;
+          const count = counts[parity];
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Generating...' : 'Generate Master Timetable'}
-        </button>
+          return (
+            <div
+              key={parity}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{icon}</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{label}</h3>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${c.badge}`}>
+                    {sublabel}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Clears only the {parity.toLowerCase()} semester schedule. The{' '}
+                {parity === 'EVEN' ? 'odd' : 'even'} semester timetable is preserved.
+              </p>
+
+              <button
+                onClick={() => handleGenerate(parity)}
+                disabled={isDisabled}
+                className={`px-5 py-2.5 text-white font-medium rounded-md transition-colors
+                  focus:outline-none focus:ring-2 focus:ring-offset-2
+                  disabled:opacity-50 disabled:cursor-not-allowed ${c.btn}`}
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Generating…
+                  </span>
+                ) : (
+                  label
+                )}
+              </button>
+
+              {msg && (
+                <div
+                  className={`text-sm rounded-md px-3 py-2 ${msg.type === 'success'
+                      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                      : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                    }`}
+                >
+                  {msg.text}
+                </div>
+              )}
+
+              {count !== null && count > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {count} scheduled class entries created.
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {generatedClasses && generatedClasses.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Generated Classes ({generatedClasses.length})
-            </h3>
-          </div>
-          <div className="overflow-x-auto max-h-96">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Class ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Course</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Faculty</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Room</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Day</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {generatedClasses.map((cls) => (
-                  <tr key={cls.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{cls.id}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {cls.courseOffering?.course?.courseCode || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {cls.courseOffering?.faculty?.firstName} {cls.courseOffering?.faculty?.lastName}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {cls.room?.roomNumber || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{cls.dayOfWeek}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {cls.startTime} - {cls.endTime}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Collapsible info note */}
+      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-4 text-sm text-yellow-800 dark:text-yellow-300">
+        <strong>Note:</strong> Both generations share the same room and faculty data,
+        but faculty workloads are computed independently per parity. This mirrors how
+        the university schedule actually works — even and odd semesters do not run
+        simultaneously.
+      </div>
     </div>
   );
 };
 
 export default GenerateTimetable;
-
