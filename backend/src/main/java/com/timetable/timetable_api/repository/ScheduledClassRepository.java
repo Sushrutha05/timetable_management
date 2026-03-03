@@ -4,13 +4,18 @@ import com.timetable.timetable_api.model.ScheduledClass;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List; // Add this import
+import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface ScheduledClassRepository extends JpaRepository<ScheduledClass, Long> {
     // Primary Key 'class_id' is a Long
 
-    List<ScheduledClass> findByCourseOffering_Faculty_Id(Long facultyId);
+    List<ScheduledClass> findByCourseOffering_Faculty_Id(Long facultyId); // Retained for compatibility if needed
+
+    @Query("SELECT s FROM ScheduledClass s WHERE s.assignedFaculty.id = :facultyId OR (s.assignedFaculty IS NULL AND s.courseOffering.faculty.id = :facultyId)")
+    List<ScheduledClass> findForFaculty(@Param("facultyId") Long facultyId);
 
     List<ScheduledClass> findByCourseOffering_Section_Id(Long sectionId);
 

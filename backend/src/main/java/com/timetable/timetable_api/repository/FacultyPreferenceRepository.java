@@ -13,5 +13,7 @@ public interface FacultyPreferenceRepository extends JpaRepository<FacultyPrefer
 
     void deleteByFacultyId(Long facultyId);
 
+    List<FacultyPreference> findByCourseIdOrderByPriorityAsc(Long courseId);
+
     void deleteByCourseId(Long courseId);
 }

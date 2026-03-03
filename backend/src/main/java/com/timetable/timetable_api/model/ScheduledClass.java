@@ -93,4 +93,12 @@ public class ScheduledClass {
     public void setEndTime(LocalTime endTime) {
         this.endTime = endTime;
     }
+
+    public Faculty getAssignedFaculty() {
+        return assignedFaculty;
+    }
+
+    public void setAssignedFaculty(Faculty assignedFaculty) {
+        this.assignedFaculty = assignedFaculty;
+    }
 }

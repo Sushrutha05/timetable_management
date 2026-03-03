@@ -24,8 +24,8 @@ public class TimetableViewService {
      * Gets only the classes for a specific faculty member. (For Faculty)
      */
     public List<ScheduledClass> getTimetableForFaculty(Long facultyId) {
-        // This requires a custom method in our repository
-        return scheduledClassRepository.findByCourseOffering_Faculty_Id(facultyId);
+        // This uses the custom method to account for substitute assignments
+        return scheduledClassRepository.findForFaculty(facultyId);
     }
 
     /**

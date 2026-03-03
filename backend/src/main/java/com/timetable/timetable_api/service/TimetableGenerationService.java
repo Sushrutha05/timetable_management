@@ -25,6 +25,8 @@ public class TimetableGenerationService {
     private ScheduledClassRepository scheduledClassRepository;
     @Autowired
     private TimetableMetadataRepository metadataRepository;
+    @Autowired
+    private com.timetable.timetable_api.repository.FacultyPreferenceRepository preferenceRepository;
 
     // =========================================================================
     // Public API
@@ -162,15 +164,33 @@ public class TimetableGenerationService {
 
                 if (pHours > 0) {
                     int blockSize = labBlockSize(c);
-                    boolean ok = schedulePractical(offering, pHours, blockSize,
+                    boolean ok = schedulePractical(offering, offering.getFaculty(), null, pHours, blockSize,
                             allRooms, grpAll, occupied, facultyHours, sectionDailyHours, created);
+
                     if (!ok) {
-                        String diagnosis = diagnosePracticalFailure(
-                                offering, blockSize, allRooms, grpAll, facultyHours);
-                        throw new RuntimeException(
-                                "Cannot schedule Practical for " + c.getCourseCode()
-                                        + " | section=" + section.getName()
-                                        + " | semGroup=" + grp + "\n→ " + diagnosis);
+                        boolean fallbackOk = false;
+                        List<com.timetable.timetable_api.model.FacultyPreference> prefs = preferenceRepository
+                                .findByCourseIdOrderByPriorityAsc(c.getId());
+                        for (com.timetable.timetable_api.model.FacultyPreference pref : prefs) {
+                            Faculty fallbackFaculty = pref.getFaculty();
+                            if (fallbackFaculty.getId().equals(offering.getFaculty().getId()))
+                                continue;
+
+                            if (schedulePractical(offering, fallbackFaculty, fallbackFaculty, pHours, blockSize,
+                                    allRooms, grpAll, occupied, facultyHours, sectionDailyHours, created)) {
+                                fallbackOk = true;
+                                break;
+                            }
+                        }
+
+                        if (!fallbackOk) {
+                            String diagnosis = diagnosePracticalFailure(
+                                    offering, blockSize, allRooms, grpAll, facultyHours);
+                            throw new RuntimeException(
+                                    "Cannot schedule Practical for " + c.getCourseCode()
+                                            + " | section=" + section.getName()
+                                            + " | semGroup=" + grp + "\n→ " + diagnosis);
+                        }
                     }
                 }
 
@@ -202,7 +222,7 @@ public class TimetableGenerationService {
     // =========================================================================
 
     private boolean schedulePractical(
-            CourseOffering offering, int totalHours, int blockSize,
+            CourseOffering offering, Faculty currentFaculty, Faculty assignedFaculty, int totalHours, int blockSize,
             List<Room> allRooms, Map<String, List<TimeSlot>> allByDay,
             Set<String> occupied, Map<Long, Integer> facultyHours,
             Map<String, Integer> sectionDailyHours, List<ScheduledClass> created) {
@@ -232,12 +252,13 @@ public class TimetableGenerationService {
                             continue;
                         if (!hasCapacity(room, offering.getSection()))
                             continue;
-                        if (resourcesFree(offering, room, teaching, occupied, facultyHours, blockSize)) {
+                        if (resourcesFree(offering, currentFaculty, room, teaching, occupied, facultyHours,
+                                blockSize)) {
                             for (TimeSlot slot : teaching) {
-                                created.add(save(offering, room, slot));
-                                occupy(offering, room, slot, occupied);
+                                created.add(save(offering, assignedFaculty, room, slot));
+                                occupy(offering, currentFaculty, room, slot, occupied);
                             }
-                            incrementHours(offering.getFaculty(), facultyHours, blockSize);
+                            incrementHours(currentFaculty, facultyHours, blockSize);
                             sectionDailyHours.merge(
                                     offering.getSection().getId() + "_" + day, blockSize, Integer::sum);
                             placed = true;
@@ -401,10 +422,11 @@ public class TimetableGenerationService {
                             continue;
                         if (!hasCapacity(room, offering.getSection()))
                             continue;
-                        if (resourcesFree(offering, room, block, occupied, facultyHours, blockSize)) {
+                        if (resourcesFree(offering, offering.getFaculty(), room, block, occupied, facultyHours,
+                                blockSize)) {
                             for (TimeSlot slot : block) {
-                                created.add(save(offering, room, slot));
-                                occupy(offering, room, slot, occupied);
+                                created.add(save(offering, null, room, slot));
+                                occupy(offering, offering.getFaculty(), room, slot, occupied);
                             }
                             incrementHours(offering.getFaculty(), facultyHours, blockSize);
                             sectionDailyHours.merge(
@@ -462,9 +484,8 @@ public class TimetableGenerationService {
         return room.getCapacity() != null && room.getCapacity() >= required;
     }
 
-    private boolean resourcesFree(CourseOffering offering, Room room, List<TimeSlot> slots,
+    private boolean resourcesFree(CourseOffering offering, Faculty faculty, Room room, List<TimeSlot> slots,
             Set<String> occupied, Map<Long, Integer> facultyHours, int hoursToAdd) {
-        Faculty faculty = offering.getFaculty();
         Section section = offering.getSection();
         int current = facultyHours.getOrDefault(faculty.getId(), 0);
         if (current + hoursToAdd > getFacultyMaxHours(faculty))
@@ -536,10 +557,10 @@ public class TimetableGenerationService {
     // Booking helpers
     // =========================================================================
 
-    private void occupy(CourseOffering offering, Room room, TimeSlot slot, Set<String> occupied) {
+    private void occupy(CourseOffering offering, Faculty faculty, Room room, TimeSlot slot, Set<String> occupied) {
         String day = normalizeDay(slot.getDayOfWeek());
         occupied.add(key("ROOM", room.getId(), day, slot.getStartTime()));
-        occupied.add(key("FACULTY", offering.getFaculty().getId(), day, slot.getStartTime()));
+        occupied.add(key("FACULTY", faculty.getId(), day, slot.getStartTime()));
         occupied.add(key("SECTION", offering.getSection().getId(), day, slot.getStartTime()));
     }
 
@@ -547,9 +568,10 @@ public class TimetableGenerationService {
         hours.merge(faculty.getId(), inc, Integer::sum);
     }
 
-    private ScheduledClass save(CourseOffering offering, Room room, TimeSlot slot) {
+    private ScheduledClass save(CourseOffering offering, Faculty assignedFaculty, Room room, TimeSlot slot) {
         ScheduledClass sc = new ScheduledClass();
         sc.setCourseOffering(offering);
+        sc.setAssignedFaculty(assignedFaculty);
         sc.setRoom(room);
         sc.setDayOfWeek(normalizeDay(slot.getDayOfWeek()));
         sc.setStartTime(slot.getStartTime());
@@ -613,9 +635,14 @@ public class TimetableGenerationService {
             throw new RuntimeException("Conflict: Room is already occupied at that time");
 
         List<ScheduledClass> same = scheduledClassRepository.findByDayOfWeekAndStartTime(day, req.getNewStartTime());
-        boolean fBusy = same.stream().anyMatch(o -> !Objects.equals(o.getId(), sc.getId())
-                && o.getCourseOffering() != null && o.getCourseOffering().getFaculty() != null
-                && Objects.equals(o.getCourseOffering().getFaculty().getId(), off.getFaculty().getId()));
+        Faculty myF = sc.getAssignedFaculty() != null ? sc.getAssignedFaculty() : off.getFaculty();
+        boolean fBusy = same.stream().anyMatch(o -> {
+            if (Objects.equals(o.getId(), sc.getId()))
+                return false;
+            Faculty otherF = o.getAssignedFaculty() != null ? o.getAssignedFaculty()
+                    : (o.getCourseOffering() != null ? o.getCourseOffering().getFaculty() : null);
+            return otherF != null && myF != null && Objects.equals(otherF.getId(), myF.getId());
+        });
         if (fBusy)
             throw new RuntimeException("Conflict: Faculty is already scheduled at that time");
 
