@@ -1,4 +1,5 @@
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/TimetableApiApplication.java
+/home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/config/CorsConfig.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/config/SecurityConfig.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/AssignmentController.java
 /home/vaibhav-sharma/Projects/schedulePlanner/mini_project/backend/src/main/java/com/timetable/timetable_api/controller/AuthController.java

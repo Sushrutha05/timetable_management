@@ -3,11 +3,9 @@ package com.timetable.timetable_api.controller;
 import com.timetable.timetable_api.dto.UpdateSlotRequest;
 import com.timetable.timetable_api.model.ScheduledClass;
 import com.timetable.timetable_api.service.TimetableGenerationService;
-import com.timetable.timetable_api.model.ScheduledClass;
-import com.timetable.timetable_api.service.TimetableGenerationService;
 import com.timetable.timetable_api.service.TimetableReportService;
 import com.timetable.timetable_api.service.TimetableViewService;
-import com.timetable.timetable_api.dto.UpdateSlotRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;

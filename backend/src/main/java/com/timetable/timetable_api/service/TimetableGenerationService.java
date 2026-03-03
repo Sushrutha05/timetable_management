@@ -30,43 +30,25 @@ public class TimetableGenerationService {
     // Public API
     // =========================================================================
 
-    /**
-     * Convenience overload — schedules ALL semesters (legacy / test use).
-     */
     @Transactional
     public List<ScheduledClass> generateTimetable() {
         return generateTimetable(null);
     }
 
     /**
-     * Generate timetable for a specific semester parity.
+     * Generate timetable for EVEN (2,4,6,8) or ODD (1,3,5,7) semesters.
+     * Passing null generates all semesters.
      *
-     * Universities run even and odd semesters in different halves of the year,
-     * so faculty workloads only collide within one parity at a time.
-     *
-     * parity = "EVEN" → semesters 2, 4, 6, 8
-     * parity = "ODD" → semesters 1, 3, 5, 7
-     * parity = null → all semesters (legacy)
-     *
-     * Only the selected parity's existing scheduled classes are deleted;
-     * the other parity's timetable is left intact.
-     *
-     * Within each run the scheduling is SECTION-FIRST:
-     * for each semesterGroup (SEM_1_2 → SEM_3_4 → SEM_5_6_7)
-     * for each section in that group
-     * 1. Schedule all Practicals (hardest to place, done first)
-     * 2. Schedule all Lectures
-     * 3. Schedule all Tutorials
-     *
-     * Rooms and faculty are tracked globally so no double-booking occurs.
-     * Lab blocks may span one tea-break slot; the break is NOT saved as a class.
+     * Only the selected parity's classes are deleted; the other half is preserved.
+     * Generation is SECTION-FIRST so each section fully secures its lab slots
+     * before the next section starts (preventing partial starvation).
      */
     @Transactional
     public List<ScheduledClass> generateTimetable(String parity) {
 
-        // ── Phase A: clear only this parity's scheduled classes ───────────
         Set<Integer> targetSems = semestersForParity(parity);
 
+        // Delete only this parity's scheduled classes
         if (targetSems == null) {
             scheduledClassRepository.deleteAll();
         } else {
@@ -83,7 +65,6 @@ public class TimetableGenerationService {
         status.setValue("DRAFT");
         metadataRepository.save(status);
 
-        // ── Phase B: load offerings for this parity ───────────────────────
         List<CourseOffering> allOfferings = offeringRepository.findAll().stream()
                 .filter(o -> o.getSection() != null
                         && (targetSems == null || targetSems.contains(o.getSection().getSemester())))
@@ -97,9 +78,7 @@ public class TimetableGenerationService {
             throw new RuntimeException(
                     "No rooms configured. Please add rooms before generating a timetable.");
 
-        // ── Phase C: build per-semesterGroup slot maps ────────────────────
-        // allByGroup : group → day → ALL slots (incl. breaks)
-        // teachingByGroup : group → day → non-break slots only
+        // Build per-semesterGroup slot maps (with breaks for labs, without for theory)
         List<TimeSlot> allSlotsRaw = timeSlotRepository.findAllByOrderByDayOfWeekAscStartTimeAsc()
                 .stream()
                 .sorted(Comparator
@@ -108,8 +87,7 @@ public class TimetableGenerationService {
                 .collect(Collectors.toList());
 
         if (allSlotsRaw.isEmpty())
-            throw new RuntimeException(
-                    "No time slots configured. Please create time slots before generating.");
+            throw new RuntimeException("No time slots configured.");
 
         Map<String, Map<String, List<TimeSlot>>> allByGroup = new LinkedHashMap<>();
         Map<String, Map<String, List<TimeSlot>>> teachingByGroup = new LinkedHashMap<>();
@@ -126,20 +104,16 @@ public class TimetableGenerationService {
                         .computeIfAbsent(day, k -> new ArrayList<>()).add(ts);
         }
 
-        // ── Phase D: global conflict trackers ─────────────────────────────
         Map<Long, Integer> facultyHours = new HashMap<>();
         Map<String, Integer> sectionDailyHours = new HashMap<>();
         Set<String> occupied = new HashSet<>();
         List<ScheduledClass> created = new ArrayList<>();
 
-        // ── Phase E: section-first scheduling ────────────────────────────
+        // Group offerings by section and define processing order
         Map<Long, List<CourseOffering>> bySection = allOfferings.stream()
                 .collect(Collectors.groupingBy(
-                        o -> o.getSection().getId(),
-                        LinkedHashMap::new,
-                        Collectors.toList()));
+                        o -> o.getSection().getId(), LinkedHashMap::new, Collectors.toList()));
 
-        // Order: semesterGroup → semester number → section ID
         List<Long> sectionOrder = new ArrayList<>(bySection.keySet());
         sectionOrder.sort(Comparator
                 .<Long, String>comparing(sid -> {
@@ -162,9 +136,9 @@ public class TimetableGenerationService {
                         "No time slots found for semesterGroup='" + grp
                                 + "' (section=" + section.getName()
                                 + ", semester=" + section.getSemester() + "). "
-                                + "Please configure time slots for this semester group.");
+                                + "Please configure time slots in Manage Time Slots.");
 
-            // Practicals first (hardest to place), then by credit hours desc
+            // Labs first, then by credits descending
             sectionOfferings.sort((a, b) -> {
                 int pA = Optional.ofNullable(a.getCourse().getPracticalHours()).orElse(0);
                 int pB = Optional.ofNullable(b.getCourse().getPracticalHours()).orElse(0);
@@ -186,40 +160,35 @@ public class TimetableGenerationService {
                 if (lHours == 0 && tHours == 0 && pHours == 0)
                     lHours = Optional.ofNullable(c.getCreditHours()).orElse(0);
 
-                // 1. Practicals
                 if (pHours > 0) {
                     int blockSize = labBlockSize(c);
                     boolean ok = schedulePractical(offering, pHours, blockSize,
                             allRooms, grpAll, occupied, facultyHours, sectionDailyHours, created);
-                    if (!ok)
+                    if (!ok) {
+                        String diagnosis = diagnosePracticalFailure(
+                                offering, blockSize, allRooms, grpAll, facultyHours);
                         throw new RuntimeException(
-                                "Failed to schedule Practical for " + c.getCourseCode()
+                                "Cannot schedule Practical for " + c.getCourseCode()
                                         + " | section=" + section.getName()
-                                        + " | semGroup=" + grp
-                                        + " | blockSize=" + blockSize + " | pHours=" + pHours
-                                        + " — no free lab room + contiguous slot window found."
-                                        + " Check: (a) lab rooms exist with enough capacity,"
-                                        + " (b) SEM_GROUP time slots are configured,"
-                                        + " (c) faculty max-hours not exhausted.");
+                                        + " | semGroup=" + grp + "\n→ " + diagnosis);
+                    }
                 }
 
-                // 2. Lectures
                 if (lHours > 0) {
                     boolean ok = scheduleComponent(offering, "LECTURE", lHours, 1,
                             allRooms, grpTeach, occupied, facultyHours, sectionDailyHours, created);
                     if (!ok)
                         throw new RuntimeException(
-                                "Failed to schedule Lecture for " + c.getCourseCode()
+                                "Cannot schedule Lecture for " + c.getCourseCode()
                                         + " | section=" + section.getName() + " | semGroup=" + grp);
                 }
 
-                // 3. Tutorials
                 if (tHours > 0) {
                     boolean ok = scheduleComponent(offering, "TUTORIAL", tHours, 1,
                             allRooms, grpTeach, occupied, facultyHours, sectionDailyHours, created);
                     if (!ok)
                         throw new RuntimeException(
-                                "Failed to schedule Tutorial for " + c.getCourseCode()
+                                "Cannot schedule Tutorial for " + c.getCourseCode()
                                         + " | section=" + section.getName() + " | semGroup=" + grp);
                 }
             }
@@ -245,8 +214,8 @@ public class TimetableGenerationService {
             boolean placed = false;
 
             List<String> sortedDays = new ArrayList<>(orderedDays());
-            sortedDays.sort(Comparator
-                    .comparingInt(d -> sectionDailyHours.getOrDefault(offering.getSection().getId() + "_" + d, 0)));
+            sortedDays.sort(Comparator.comparingInt(d -> sectionDailyHours.getOrDefault(
+                    offering.getSection().getId() + "_" + d, 0)));
 
             outer: for (String day : sortedDays) {
                 List<TimeSlot> dayAll = allByDay.getOrDefault(day, List.of());
@@ -286,25 +255,99 @@ public class TimetableGenerationService {
     }
 
     /**
-     * Build all candidate lab windows that contain exactly {@code teachingNeeded}
-     * non-break slots with wall-clock contiguity and at most ONE break in the
-     * middle.
+     * Runs after schedulePractical fails and returns a specific actionable error
+     * message.
+     * Checks each blocking condition in priority order.
+     */
+    private String diagnosePracticalFailure(
+            CourseOffering offering, int blockSize,
+            List<Room> allRooms, Map<String, List<TimeSlot>> allByDay,
+            Map<Long, Integer> facultyHours) {
+
+        Section section = offering.getSection();
+        Faculty faculty = offering.getFaculty();
+
+        // (a) Are there any LAB rooms at all?
+        List<Room> labRooms = allRooms.stream()
+                .filter(r -> roomTypeMatches(r, "PRACTICAL")).collect(Collectors.toList());
+        if (labRooms.isEmpty())
+            return "NO LAB ROOMS: There are no rooms with Type=LAB configured. "
+                    + "Go to Manage Rooms → add at least one room with Type=LAB.";
+
+        // (b) Do lab rooms have enough capacity for this section?
+        int required = section.getStudentCount() == null ? 30 : section.getStudentCount();
+        int maxCap = labRooms.stream()
+                .mapToInt(r -> r.getCapacity() == null ? 0 : r.getCapacity()).max().orElse(0);
+        if (maxCap < required)
+            return "LAB CAPACITY TOO LOW: Section '" + section.getName() + "' needs capacity "
+                    + required + " but the largest lab room only has capacity " + maxCap + ". "
+                    + "Go to Manage Rooms and increase a lab room's capacity, "
+                    + "or lower the section's student count in Manage Sections.";
+
+        // (c) Is the faculty max-hours limit zero?
+        int limit = getFacultyMaxHours(faculty);
+        if (limit <= 0)
+            return "FACULTY MAX-HOURS = 0: Faculty '"
+                    + faculty.getFirstName() + " " + faculty.getLastName()
+                    + "' (designation="
+                    + (faculty.getDesignationConstraint() != null ? faculty.getDesignationConstraint().getDesignation()
+                            : "null")
+                    + ") has "
+                    + "MaxLectureHours=0 AND MaxLabHours=0. "
+                    + "Go to Manage Designations → set positive values for '"
+                    + (faculty.getDesignationConstraint() != null ? faculty.getDesignationConstraint().getDesignation()
+                            : "null")
+                    + "'.";
+
+        // (d) Is the faculty limit smaller than one lab block?
+        if (limit < blockSize)
+            return "FACULTY MAX-HOURS TOO LOW: Faculty '"
+                    + faculty.getFirstName() + " " + faculty.getLastName()
+                    + "' max total hours=" + limit
+                    + " is less than the lab block size=" + blockSize + ". "
+                    + "Increase MaxLabHours for designation '"
+                    + (faculty.getDesignationConstraint() != null ? faculty.getDesignationConstraint().getDesignation()
+                            : "null")
+                    + "' in Manage Designations.";
+
+        // (e) Are there any contiguous lab windows in this group at all?
+        long totalWindows = allByDay.values().stream()
+                .mapToLong(slots -> buildLabCandidates(slots, blockSize).size()).sum();
+        if (totalWindows == 0)
+            return "NO CONTIGUOUS TIME SLOTS: Cannot find " + blockSize
+                    + " back-to-back non-break periods in the semester group's time slots. "
+                    + "In Manage Time Slots make sure that each day has slots where "
+                    + "endTime of slot N equals startTime of slot N+1 (no gaps).";
+
+        // (f) Windows exist but everything is blocked by prior assignments
+        int usedHours = facultyHours.getOrDefault(faculty.getId(), 0);
+        return "ALL " + totalWindows + " SLOT WINDOWS BLOCKED: "
+                + "Either every lab room is already occupied at all " + blockSize
+                + "-slot windows, or the faculty '"
+                + faculty.getFirstName() + " " + faculty.getLastName()
+                + "' has used " + usedHours + "/" + limit + " hours "
+                + "leaving no room for another " + blockSize + "-hour block. "
+                + "Try: (1) add more lab rooms, (2) add more time slots, "
+                + "(3) increase faculty MaxLabHours in Manage Designations.";
+    }
+
+    /**
+     * Build all valid lab candidate windows from {@code daySlots}.
+     * A window may contain at most ONE break slot between teaching slots.
+     * Wall-clock contiguity is required (endTime[i] == startTime[i+1]).
      */
     private List<List<TimeSlot>> buildLabCandidates(List<TimeSlot> daySlots, int teachingNeeded) {
         List<List<TimeSlot>> result = new ArrayList<>();
         int n = daySlots.size();
-
         for (int start = 0; start < n; start++) {
             if (daySlots.get(start).isBreakSlot())
                 continue;
-
             List<TimeSlot> window = new ArrayList<>();
             int teachCount = 0, breakCount = 0;
-
             for (int end = start; end < n && teachCount < teachingNeeded; end++) {
                 TimeSlot curr = daySlots.get(end);
                 if (end > start && !curr.getStartTime().equals(daySlots.get(end - 1).getEndTime()))
-                    break; // wall-clock gap
+                    break;
                 if (curr.isBreakSlot()) {
                     if (++breakCount > 1)
                         break;
@@ -336,8 +379,8 @@ public class TimetableGenerationService {
             boolean placed = false;
 
             List<String> sortedDays = new ArrayList<>(orderedDays());
-            sortedDays.sort(Comparator
-                    .comparingInt(d -> sectionDailyHours.getOrDefault(offering.getSection().getId() + "_" + d, 0)));
+            sortedDays.sort(Comparator.comparingInt(d -> sectionDailyHours.getOrDefault(
+                    offering.getSection().getId() + "_" + d, 0)));
 
             for (String day : sortedDays) {
                 List<TimeSlot> daySlots = slotsByDay.getOrDefault(day, List.of());
@@ -525,8 +568,10 @@ public class TimetableGenerationService {
         DesignationConstraint dc = faculty.getDesignationConstraint();
         if (dc == null)
             return Integer.MAX_VALUE;
-        return Optional.ofNullable(dc.getMaxLectureHours()).orElse(0)
-                + Optional.ofNullable(dc.getMaxLabHours()).orElse(0);
+        int lec = Optional.ofNullable(dc.getMaxLectureHours()).orElse(0);
+        int lab = Optional.ofNullable(dc.getMaxLabHours()).orElse(0);
+        // If both are 0, treat as unlimited (unconfigured) so we don't block everything
+        return (lec == 0 && lab == 0) ? Integer.MAX_VALUE : lec + lab;
     }
 
     // =========================================================================
@@ -591,27 +636,16 @@ public class TimetableGenerationService {
     // Pure utilities
     // =========================================================================
 
-    /**
-     * Returns the set of semester numbers for a given parity string.
-     * Returns null if parity is null/blank (meaning: all semesters).
-     */
     private Set<Integer> semestersForParity(String parity) {
         if (parity == null || parity.isBlank())
             return null;
         return switch (parity.trim().toUpperCase()) {
             case "EVEN" -> new HashSet<>(Set.of(2, 4, 6, 8));
             case "ODD" -> new HashSet<>(Set.of(1, 3, 5, 7));
-            default -> null; // unknown parity → all semesters
+            default -> null;
         };
     }
 
-    /**
-     * Maps a semester number to the semesterGroup label in
-     * time_slots.semester_group.
-     * 1, 2 → SEM_1_2
-     * 3, 4 → SEM_3_4
-     * 5, 6, 7, 8 → SEM_5_6_7
-     */
     private String semesterGroupFor(Integer semester) {
         if (semester == null)
             return "SEM_3_4";

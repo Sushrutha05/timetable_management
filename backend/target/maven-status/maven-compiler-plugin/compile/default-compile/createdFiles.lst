@@ -2,7 +2,6 @@ com/timetable/timetable_api/service/SectionManagementService.class
 com/timetable/timetable_api/model/Room.class
 com/timetable/timetable_api/TimetableApiApplication.class
 com/timetable/timetable_api/dto/CourseOfferingRequest.class
-com/timetable/timetable_api/service/TimetableGenerationService.class
 com/timetable/timetable_api/dto/FacultyCreationRequest.class
 com/timetable/timetable_api/repository/RoomRepository.class
 com/timetable/timetable_api/service/FacultyPreferenceService.class
