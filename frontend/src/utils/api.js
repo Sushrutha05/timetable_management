@@ -200,7 +200,7 @@ export const departmentAPI = {
 
 // Admin APIs - Timetable
 export const timetableAPI = {
-  generate: () => fetchAPI('/api/admin/timetable/generate', {
+  generate: (parity) => fetchAPI(`/api/admin/timetable/generate${parity ? `?parity=${parity}` : ''}`, {
     method: 'POST',
   }),
   getFull: () => fetchAPI('/api/admin/timetable'),
