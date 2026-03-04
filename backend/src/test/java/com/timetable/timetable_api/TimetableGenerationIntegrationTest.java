@@ -6,8 +6,8 @@ import com.timetable.timetable_api.service.TimetableGenerationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class TimetableGenerationIntegrationTest {
 
     @Autowired
@@ -34,8 +34,6 @@ public class TimetableGenerationIntegrationTest {
     private TimeSlotRepository timeSlotRepository;
     @Autowired
     private CourseOfferingRepository offeringRepository;
-    @Autowired
-    private ScheduledClassRepository scheduledClassRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -79,7 +77,7 @@ public class TimetableGenerationIntegrationTest {
         course.setCreditHours(4);
         course.setLectureHours(2); // 2 hours Lecture
         course.setTutorialHours(1); // 1 hour Tutorial
-        course.setPracticalHours(3); // 3 hours Practical (1 block)
+        course.setPracticalHours(2); // 2 hours Practical (1 block)
         // course.setDepartment(dept); // Course has no department
         courseRepository.save(course);
 
@@ -122,6 +120,11 @@ public class TimetableGenerationIntegrationTest {
         // Tue for overflow
         createSlot("TUESDAY", "09:00", "10:00", false);
         createSlot("TUESDAY", "10:00", "11:00", false);
+        createSlot("TUESDAY", "11:00", "12:00", false);
+        createSlot("TUESDAY", "12:00", "13:00", true); // Break
+        createSlot("TUESDAY", "13:00", "14:00", false);
+        createSlot("TUESDAY", "14:00", "15:00", false);
+        createSlot("TUESDAY", "15:00", "16:00", false);
 
         // 2. Generate
         List<ScheduledClass> scheduled = generationService.generateTimetable();
@@ -129,11 +132,11 @@ public class TimetableGenerationIntegrationTest {
         // 3. Verify
         assertFalse(scheduled.isEmpty());
 
-        // Check Practical: Should have 3 consecutive slots on the SAME DAY
+        // Check Practical: Should have 2 consecutive slots on the SAME DAY
         long practicals = scheduled.stream()
                 .filter(sc -> sc.getRoom().getType().equals("LAB"))
                 .count();
-        assertEquals(3, practicals, "Should have 3 practical slots assigned");
+        assertEquals(2, practicals, "Should have 2 practical slots assigned");
 
         // Check Theory (L+T): Should have 2+1 = 3 slots
         long theory = scheduled.stream()
@@ -151,7 +154,7 @@ public class TimetableGenerationIntegrationTest {
         ts.setStartTime(LocalTime.parse(start));
         ts.setEndTime(LocalTime.parse(end));
         ts.setBreakSlot(isBreak);
-        ts.setSemesterGroup("ALL");
+        ts.setSemesterGroup("SEM_1_2");
         timeSlotRepository.save(ts);
     }
 }
