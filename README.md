@@ -15,13 +15,14 @@
 7. [Security Model](#7-security-model)
 8. [Tech Stack](#8-tech-stack)
 9. [Local Development Setup](#9-local-development-setup)
-10. [Project Structure](#10-project-structure)
+10. [Docker Deployment](#10-docker-deployment)
+11. [Project Structure](#11-project-structure)
 
 ---
 
 ## 1. System Overview
 
-This system automates the assignment of `CourseOffering`s (a course assigned to a section and faculty) to `TimeSlot`s and `Room`s, while respecting a set of hard constraints:
+This system automates the assignment of `CourseOfferings` (a course assigned to a section and faculty) to `TimeSlots` and `Rooms`, while respecting a set of hard constraints:
 
 | Constraint | Description |
 |---|---|
@@ -329,7 +330,86 @@ mvn clean package # Full build + tests
 
 ---
 
-## 10. Project Structure
+## 10. Docker Deployment
+
+The backend ships with a **two-stage Dockerfile** that keeps the final image lean — the Maven build happens in a temporary builder layer; only the compiled JAR is copied into the runtime image.
+
+```dockerfile
+# Stage 1 — Build (Maven + JDK 17)
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Stage 2 — Runtime (JRE only)
+FROM eclipse-temurin:17-jdk
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+```
+
+### Build the Image
+
+```bash
+cd backend
+docker build -t timetable-api:latest .
+```
+
+### Run Against an External PostgreSQL Instance
+
+The application reads datasource configuration from environment variables at runtime, so no credentials are baked into the image:
+
+```bash
+docker run -d \
+  --name timetable-api \
+  -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:5432/schedule_planner \
+  -e SPRING_DATASOURCE_USERNAME=<user> \
+  -e SPRING_DATASOURCE_PASSWORD=<password> \
+  timetable-api:latest
+```
+
+> Flyway migrations run automatically on startup — no manual schema setup required beyond creating the empty database.
+
+### Docker Compose (Backend + Database)
+
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: schedule_planner
+      POSTGRES_USER: timetable
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    image: timetable-api:latest
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/schedule_planner
+      SPRING_DATASOURCE_USERNAME: timetable
+      SPRING_DATASOURCE_PASSWORD: secret
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg_data:
+```
+
+```bash
+docker compose up -d
+```
+
+---
+
+## 11. Project Structure
 
 ```
 mini_project/
