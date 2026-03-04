@@ -22,7 +22,7 @@
 
 ## 1. System Overview
 
-This system automates the assignment of `CourseOffering`s (a course assigned to a section and faculty) to `TimeSlot`s and `Room`s, while respecting a set of hard constraints:
+This system automates the assignment of `CourseOfferings` (a course assigned to a section and faculty) to `TimeSlots` and `Rooms`, while respecting a set of hard constraints:
 
 | Constraint | Description |
 |---|---|
