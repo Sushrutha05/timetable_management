@@ -20,9 +20,6 @@ public class Course {
     @Column(name = "credit_hours", nullable = false)
     private Integer creditHours;
 
-    // --- THIS IS THE FIX ---
-    // We are telling Hibernate the exact SQL to use for this column,
-    // which includes a DEFAULT value.
     @Column(name = "course_type")
     private String courseType;
 

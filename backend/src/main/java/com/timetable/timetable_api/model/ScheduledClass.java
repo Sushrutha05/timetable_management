@@ -44,7 +44,6 @@ public class ScheduledClass {
     private Faculty assignedFaculty;
 
     // --- Getters and Setters ---
-    // (Generate them here)
 
     public Long getId() {
         return id;

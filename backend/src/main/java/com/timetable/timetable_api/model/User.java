@@ -1,37 +1,32 @@
 package com.timetable.timetable_api.model;
 
-import jakarta.persistence.*; // Make sure to import from jakarta.persistence
+import jakarta.persistence.*;
 
-@Entity // Tells Spring this is a database entity
-@Table(name = "users") // Maps this class to the "users" table
+@Entity
+@Table(name = "users")
 public class User {
 
-    @Id // Marks this field as the Primary Key
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Tells Spring that PostgreSQL will auto-generate this ID
-                                                        // (using BIGSERIAL)
-    @Column(name = "user_id") // Maps this field to the "user_id" column
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
     private Long id;
 
-    @Column(name = "email", unique = true, nullable = false) // Maps to the "email" column
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
 
-    @Column(name = "password_hash", nullable = false) // Maps to the "password_hash" column
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "role", nullable = false) // Maps to the "role" column
-    private Integer role; // 1 for ADMIN, 2 for FACULTY
+    @Column(name = "role", nullable = false)
+    private Integer role;
 
-    @Column(name = "department_id") // Maps to the "department_id" column (Nullable for super-admin potentially,
-                                    // though strictly needed for Department Admin)
+    @Column(name = "department_id")
     private Integer departmentId;
 
     @Column(name = "requires_password_reset", nullable = false)
     private Boolean requiresPasswordReset = true;
 
     // --- Getters and Setters ---
-    // You need to add getters and setters for all fields so Spring can access them.
-    // Your IDE can generate these for you (Right-click -> Generate -> Getters and
-    // Setters).
 
     public Long getId() {
         return id;
