@@ -4,6 +4,16 @@
 
 ---
 
+## 🎥 Demo
+
+See the scheduling engine generate a timetable automatically.
+<p align="center">
+  <a href="https://youtu.be/dGs6VENJgag">
+    <img src="https://img.youtube.com/vi/dGs6VENJgag/maxresdefault.jpg" width="700">
+  </a>
+</p>
+
+
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
