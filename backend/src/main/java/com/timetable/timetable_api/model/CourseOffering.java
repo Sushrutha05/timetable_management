@@ -30,7 +30,6 @@ public class CourseOffering {
     private Section section;
 
     // --- Getters and Setters ---
-    // (Generate them here)
 
     public Long getId() {
         return id;

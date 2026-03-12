@@ -21,7 +21,6 @@ public class Room {
     private Integer capacity;
 
     // --- Getters and Setters ---
-    // (Generate them here)
 
     public Integer getId() {
         return id;

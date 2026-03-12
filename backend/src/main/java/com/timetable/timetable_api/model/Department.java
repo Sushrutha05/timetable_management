@@ -15,7 +15,6 @@ public class Department {
     private String name;
 
     // --- Getters and Setters ---
-    // (Add them here)
 
     public Integer getId() {
         return id;

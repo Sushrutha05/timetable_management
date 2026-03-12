@@ -23,13 +23,10 @@ public class FacultyPreference {
     @JoinColumn(name = "course_id", referencedColumnName = "course_id", nullable = false)
     private Course course;
 
-    // --- Standard Column ---
-
     @Column(name = "priority", nullable = false)
     private Integer priority; // e.g., 1, 2, 3
 
     // --- Getters and Setters ---
-    // (Generate them here)
 
     public Long getId() {
         return id;
